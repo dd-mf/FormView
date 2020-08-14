@@ -1,14 +1,14 @@
 //
-//  FormViewTests.swift
-//  FormViewTests
+//  FormViewSampleTests.swift
+//  FormViewSampleTests
 //
-//  Created by J.Rodden on 8/10/20.
+//  Created by me on 8/12/20.
 //
 
 import XCTest
-@testable import FormView
+@testable import FormViewSample
 
-class FormViewTests: XCTestCase {
+class FormViewSampleTests: XCTestCase {
 
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.
