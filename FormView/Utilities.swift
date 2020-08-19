@@ -9,11 +9,6 @@ import UIKit
 
 func execute<T>(_ action: () -> T) -> T { return action() }
 
-func type<T: Any>(of thing: T?, is: T.Type) -> Bool
-{
-    type(of: thing) == T.self || type(of: thing) == Optional<T>.self
-}
-
 func type<T: Any>(of thing: Any, is: T.Type) -> Bool
 {
     type(of: thing) == T.self || type(of: thing) == Optional<T>.self
@@ -24,10 +19,10 @@ func unwrap(_ any: Any) -> Any?
     // how-to-unwrap-an-optional-value-from-any-type
     // https://stackoverflow.com/questions/27989094
     let mirror = Mirror(reflecting: any)
-    guard mirror.displayStyle == .optional else { return any }
+    guard mirror.isOptional else { return any }
     guard let (_, value) = mirror.children.first else { return nil }
     
-    return value
+    return unwrap(value)
 }
 
 // MARK: -
@@ -139,9 +134,14 @@ public extension Assignable
         }
         set
         {
+            let logging = false
+            let newValue = unwrap(newValue as Any) as? T
             guard let rawKeyPath = CodingKeys.keyPath(for: key) else { fatalError() }
-            if let kp = rawKeyPath as? WritableKeyPath<Self, T?> { self[keyPath: kp] = newValue }
-            else if let value = newValue, let kp = rawKeyPath as? WritableKeyPath<Self, T> { self[keyPath: kp] = value }
+            let log = { if logging { print("\(key) is now \(String(describing: newValue))") } }
+
+            if let value = newValue,
+               let kp = rawKeyPath as? WritableKeyPath<Self, T> { self[keyPath: kp] = value; log() }
+            else if let kp = rawKeyPath as? WritableKeyPath<Self, T?> { self[keyPath: kp] = newValue; log() }
         }
     }
 }
@@ -149,6 +149,13 @@ public extension Assignable
 public protocol _Assignable
 {
     subscript<T>(_ key: String) -> T? { get set }
+}
+
+// MARK: -
+
+internal extension Mirror
+{
+    var isOptional: Bool { displayStyle == .optional }
 }
 
 // MARK: -
