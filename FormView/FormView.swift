@@ -22,9 +22,6 @@ fileprivate enum SupportedType
     init?(_ property: Mirror.Child)
     {
         let value = property.value
-        if type(of: value, is: Int.self) { self = .int; return }
-        if type(of: value, is: Decimal.self) { self = .decimal; return }
-        if type(of: value, is: URL.self) { self = .string(.URL); return }
 
         if type(of: value, is: String.self)
         {
@@ -40,10 +37,13 @@ fileprivate enum SupportedType
                 }
             }
             
-            self = .string(keyboardType); return
-       }
+            self = .string(keyboardType)
+        }
+        else if type(of: value, is: Int.self) { self = .int }
+        else if type(of: value, is: Decimal.self) { self = .decimal }
+        else if type(of: value, is: URL.self) { self = .string(.URL) }
 
-        return nil
+        else { return nil }
     }
     
     var convert: (String) -> (Any?)
@@ -135,13 +135,14 @@ public class FormView: UIScrollView
         }
         
         // pull rawValues from textFields
+        var textFieldsMap = [String: UITextField]()
         var values = textFields.reduce([String: Any]())
         {
             guard let label = $1.placeholder,
                   let value = $1.text else { return $0 }
             
-            return value.isEmpty ? $0 :
-                $0.merging([label: value]) { (_, new) in new }
+            textFieldsMap[label] = $1
+            return $0.merging([label: value]) { (_, new) in new }
         }
         
         var updatedData = data as? _Assignable // copy on exit
@@ -151,14 +152,28 @@ public class FormView: UIScrollView
         for property in Mirror(reflecting: data).children
         {
             guard let propertyName = property.label else { continue }
-            
-            guard let supportedType = SupportedType(property),
-                  let rawValue = values[propertyName] as? String
+
+            guard let supportedType = SupportedType(property)
             else { values.removeValue(forKey: propertyName); continue }
             
-            values[propertyName] = supportedType.convert(rawValue)
-            supportedType.assign(values[propertyName],
-                                 to: &updatedData, for: propertyName)
+            let rawValue = values[propertyName] as? String ?? ""
+            let newValue: Any? = execute
+            {
+                let newValue = supportedType.convert(rawValue)
+                let mirror = Mirror(reflecting: property.value)
+                return !rawValue.isEmpty || !mirror.isOptional ? newValue : nil
+            }
+            
+            supportedType.assign(newValue, to: &updatedData, for: propertyName)
+            
+            values[propertyName] = (updatedData != nil) ?
+                ifLet(updatedData?[propertyName]) { $0 } : newValue
+            
+            if updatedData != nil
+            {   // copy values back from updatedData to handle non-optionals
+                textFieldsMap[propertyName]?.text =
+                    ifLet(unwrap(values[propertyName] as Any)) { "\($0)" }
+            }
         }
         
         return values
@@ -411,6 +426,8 @@ extension FormView: UITextFieldDelegate
     }
 
     public func textFieldDidEndEditing(_: UITextField) { currentTextField = nil }
+    
+    public func textFieldShouldClear(_: UITextField ) -> Bool { isDirty = true; return true }
     
     public func textFieldShouldReturn(_ textField: UITextField) -> Bool
     {
