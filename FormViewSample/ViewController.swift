@@ -123,7 +123,7 @@ class ViewController: UIViewController
         if let values = form.values, !values.isEmpty
         {
             print("-- Raw Values:\n{"); defer { print("}")}
-            values.forEach { print("\t\($0): \($1) <\(type(of: $1))>") }
+            values.forEach { print("\t\($0): \"\($1)\" <\(type(of: $1))>") }
         }
         
     }
