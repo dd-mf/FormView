@@ -19,7 +19,7 @@ func unwrap(_ any: Any) -> Any?
     // how-to-unwrap-an-optional-value-from-any-type
     // https://stackoverflow.com/questions/27989094
     let mirror = Mirror(reflecting: any)
-    guard mirror.isOptional else { return any }
+    guard mirror.isA(.optional) else { return any }
     guard let (_, value) = mirror.children.first else { return nil }
     
     return unwrap(value)
@@ -155,7 +155,7 @@ public protocol _Assignable
 
 internal extension Mirror
 {
-    var isOptional: Bool { displayStyle == .optional }
+    func isA(_ style: DisplayStyle) -> Bool { displayStyle == style }
 }
 
 // MARK: -

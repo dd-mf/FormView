@@ -161,7 +161,7 @@ public class FormView: UIScrollView
             {
                 let newValue = supportedType.convert(rawValue)
                 let mirror = Mirror(reflecting: property.value)
-                return !rawValue.isEmpty || !mirror.isOptional ? newValue : nil
+                return !rawValue.isEmpty || !mirror.isA(.optional) ? newValue : nil
             }
             
             supportedType.assign(newValue, to: &updatedData, for: propertyName)
