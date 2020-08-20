@@ -17,13 +17,18 @@ fileprivate extension CGFloat
 fileprivate enum SupportedType
 {
     case int, decimal
+    case `enum`(Enumerable.Type)
     case string(UIKeyboardType)
 
     init?(_ property: Mirror.Child)
     {
         let value = property.value
-
-        if type(of: value, is: String.self)
+        
+        if let value = value as? Enumerable
+        {
+            self = .enum(type(of: value))
+        }
+        else if type(of: value, is: String.self)
         {
             var keyboardType: UIKeyboardType = .default
             for (keyword, keyboard): (String, UIKeyboardType) in
@@ -54,6 +59,8 @@ fileprivate enum SupportedType
         case .decimal: return { Decimal(string: $0) }
         case .string(.URL): return { URL(string: $0) }
             
+        case .enum(let type): return { type.init(rawValue: $0) }
+
         case .string(.phonePad):
             let nonDigits = CharacterSet.decimalDigits.inverted
             return { $0.components(separatedBy: nonDigits).joined() }
@@ -68,6 +75,7 @@ fileprivate enum SupportedType
         
         switch self
         {
+        case .enum(_):      return { target.set(key, to: $0); return target }
         case .int:          return { target.set(key, to: $0 as? Int); return target }
         case .decimal:      return { target.set(key, to: $0 as? Decimal); return target }
         case .string(.URL): return { target.set(key, to: $0 as? URL); return target }
@@ -81,6 +89,7 @@ fileprivate enum SupportedType
         switch self
         {
         case .int: return .numberPad
+        case .enum(_): return .default
         case .decimal: return .decimalPad
         case .string(let keyboardType): return keyboardType
         }
@@ -251,6 +260,13 @@ extension FormView
         
         if let placeholder = property.label {
             textField.placeholder = "\(placeholder)"
+        }
+        
+        if Mirror(reflecting: property.value).isA(.enum)
+        {
+            textField.spellCheckingType = .no
+            textField.autocorrectionType = .no
+            textField.autocapitalizationType = .none
         }
 
         textField.keyboardType = supportedType.keyboardType

@@ -140,13 +140,31 @@ public extension Assignable
         }
     }
     
+    /// Override this in your _Assignable_ struct/class in order to support (non-optional) enum values.
+    /// Enum types must also be Enumerable, and be CaseIterable in order to gain automatic picker support.
     mutating func set<T>(_ key: String, to newValue: T?) { self[key] = newValue }
+
+    internal static func keyPath(for key: String) -> AnyKeyPath? { CodingKeys.keyPath(for: key) }
 }
 
 public protocol _Assignable
 {
     subscript<T>(_ key: String) -> T? { get set }
     mutating func set<T>(_ key: String, to newValue: T?)
+}
+
+// MARK: -
+
+public protocol Enumerable
+{
+    init?(rawValue: String)
+    var rawValue: String { get }
+    static var allValues: [String] { get }
+}
+
+public extension Enumerable where Self: CaseIterable
+{
+    static var allValues: [String] { allCases.map { "\($0)"} }
 }
 
 // MARK: -

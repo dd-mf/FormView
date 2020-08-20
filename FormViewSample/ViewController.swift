@@ -42,10 +42,19 @@ class ViewController: UIViewController
         var value: Decimal?
         var phone: String?
         var password: String?
+        var fooBarBaz: FooBarBaz = .foo
         var twitter: String?
         var something: String?
         var orOther: String?
         var andOneMore: String?
+        
+        enum FooBarBaz: String,
+                        Codable,
+                        Enumerable,
+                        CaseIterable
+        {
+            case foo, bar, baz
+        }
         
         enum CodingKeys: KeyPathMapping
         {
@@ -56,6 +65,7 @@ class ViewController: UIViewController
             case value
             case phone
             case password
+            case fooBarBaz
             case twitter
             case something
             case orOther
@@ -72,12 +82,24 @@ class ViewController: UIViewController
                 case .value:        return \TestStruct.value
                 case .phone:        return \TestStruct.phone
                 case .password:     return \TestStruct.password
+                case .fooBarBaz:    return \TestStruct.fooBarBaz
                 case .twitter:      return \TestStruct.twitter
                 case .something:    return \TestStruct.something
                 case .orOther:      return \TestStruct.orOther
                 case .andOneMore:   return \TestStruct.andOneMore
                 }
             }
+        }
+        
+        mutating func set<T>(_ key: String, to newValue: T?)
+        {
+            // fully support our enum value
+            if T.self == FooBarBaz.self ||
+               !key.contains("fooBarBaz")
+            {
+                self[key] = newValue
+            }
+            else { set(key, to: newValue as? FooBarBaz) }
         }
     }
     
