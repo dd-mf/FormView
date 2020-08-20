@@ -24,9 +24,9 @@ fileprivate enum SupportedType
     {
         let value = property.value
         
-        if let value = value as? Enumerable
+        if let enumerable = unwrap(value) as? Enumerable
         {
-            self = .enum(type(of: value))
+            self = .enum(type(of: enumerable))
         }
         else if type(of: value, is: String.self)
         {
@@ -241,7 +241,8 @@ extension FormView
         guard let supportedType = SupportedType(property) else { return nil }
 
         let textField = UITextField()
-        
+        let value = unwrap(property.value)
+
         textField.returnKeyType = .next
         textField.borderStyle = .roundedRect
         textField.clearButtonMode = .whileEditing
@@ -253,7 +254,7 @@ extension FormView
             textField.isSecureTextEntry = true
         }
         
-        if let value = unwrap(property.value)
+        if let value = value
         {
             textField.text = "\(value)"
         }
@@ -262,7 +263,8 @@ extension FormView
             textField.placeholder = "\(placeholder)"
         }
         
-        if Mirror(reflecting: property.value).isA(.enum)
+        if let value = value,
+            Mirror(reflecting: value).isA(.enum)
         {
             textField.spellCheckingType = .no
             textField.autocorrectionType = .no

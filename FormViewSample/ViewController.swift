@@ -43,6 +43,7 @@ class ViewController: UIViewController
         var phone: String?
         var password: String?
         var fooBarBaz: FooBarBaz = .foo
+        var _fooBarBaz: FooBarBaz? = .foo
         var twitter: String?
         var something: String?
         var orOther: String?
@@ -66,6 +67,7 @@ class ViewController: UIViewController
             case phone
             case password
             case fooBarBaz
+            case _fooBarBaz
             case twitter
             case something
             case orOther
@@ -83,6 +85,7 @@ class ViewController: UIViewController
                 case .phone:        return \TestStruct.phone
                 case .password:     return \TestStruct.password
                 case .fooBarBaz:    return \TestStruct.fooBarBaz
+                case ._fooBarBaz:   return \TestStruct._fooBarBaz
                 case .twitter:      return \TestStruct.twitter
                 case .something:    return \TestStruct.something
                 case .orOther:      return \TestStruct.orOther
