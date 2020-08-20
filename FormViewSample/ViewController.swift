@@ -35,7 +35,7 @@ class ViewController: UIViewController
 {
     struct TestStruct: Assignable
     {
-        var id: Int? = 0
+        var id: Int?
         var url: URL?
         var name = ""
         var email: String?
@@ -43,9 +43,6 @@ class ViewController: UIViewController
         var phone: String?
         var password: String?
         var twitter: String?
-        var foo: String?
-        var bar: String?
-        var baz: String?
         var something: String?
         var orOther: String?
         var andOneMore: String?
@@ -60,9 +57,6 @@ class ViewController: UIViewController
             case phone
             case password
             case twitter
-            case foo
-            case bar
-            case baz
             case something
             case orOther
             case andOneMore
@@ -79,9 +73,6 @@ class ViewController: UIViewController
                 case .phone:        return \TestStruct.phone
                 case .password:     return \TestStruct.password
                 case .twitter:      return \TestStruct.twitter
-                case .foo:          return \TestStruct.foo
-                case .bar:          return \TestStruct.bar
-                case .baz:          return \TestStruct.baz
                 case .something:    return \TestStruct.something
                 case .orOther:      return \TestStruct.orOther
                 case .andOneMore:   return \TestStruct.andOneMore
@@ -125,7 +116,6 @@ class ViewController: UIViewController
             print("-- Raw Values:\n{"); defer { print("}")}
             values.forEach { print("\t\($0): \"\($1)\" <\(type(of: $1))>") }
         }
-        
     }
 }
 
