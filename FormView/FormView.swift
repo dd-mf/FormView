@@ -62,15 +62,17 @@ fileprivate enum SupportedType
         }
     }
     
-    func assign(_ value: Any?, to target: inout _Assignable?, for key: String)
+    func setter(for key: String, on target: inout _Assignable?) -> (Any) -> (_Assignable?)
     {
+        guard var target = target else { return { _ in nil} }
+        
         switch self
         {
-        case .int:          target?[key] = value as? Int
-        case .decimal:      target?[key] = value as? Decimal
-        case .string(.URL): target?[key] = value as? URL
-            
-        default:            target?[key] = value as? String
+        case .int:          return { target.set(key, to: $0 as? Int); return target }
+        case .decimal:      return { target.set(key, to: $0 as? Decimal); return target }
+        case .string(.URL): return { target.set(key, to: $0 as? URL); return target }
+
+        default:            return { target.set(key, to: $0 as? String); return target }
         }
     }
     
@@ -164,7 +166,8 @@ public class FormView: UIScrollView
                 return !rawValue.isEmpty || !mirror.isA(.optional) ? newValue : nil
             }
             
-            supportedType.assign(newValue, to: &updatedData, for: propertyName)
+            updatedData = supportedType.setter(
+                for: propertyName, on: &updatedData)(newValue as Any)
             
             values[propertyName] = (updatedData != nil) ?
                 ifLet(updatedData?[propertyName]) { $0 } : newValue

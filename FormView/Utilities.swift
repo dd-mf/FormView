@@ -126,29 +126,27 @@ public extension Assignable
 {
     subscript<T>(_ key: String) -> T?
     {
-        get
-        {
-            guard let rawKeyPath = CodingKeys.keyPath(for: key) else { return nil }
-            return self[keyPath: rawKeyPath] as? T
-            
-        }
+        get { ifLet(CodingKeys.keyPath(for: key)) { self[keyPath: $0] } as? T }
         set
         {
             let logging = false
             let newValue = unwrap(newValue as Any) as? T
             guard let rawKeyPath = CodingKeys.keyPath(for: key) else { fatalError() }
             let log = { if logging { print("\(key) is now \(String(describing: newValue))") } }
-
+            
             if let value = newValue,
                let kp = rawKeyPath as? WritableKeyPath<Self, T> { self[keyPath: kp] = value; log() }
             else if let kp = rawKeyPath as? WritableKeyPath<Self, T?> { self[keyPath: kp] = newValue; log() }
         }
     }
+    
+    mutating func set<T>(_ key: String, to newValue: T?) { self[key] = newValue }
 }
 
 public protocol _Assignable
 {
     subscript<T>(_ key: String) -> T? { get set }
+    mutating func set<T>(_ key: String, to newValue: T?)
 }
 
 // MARK: -
