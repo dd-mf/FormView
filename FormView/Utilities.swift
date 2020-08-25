@@ -119,24 +119,29 @@ extension String
 
 public protocol Assignable: _Assignable, Codable
 {
-    associatedtype CodingKeys: KeyPathMapping
+    typealias CodingKeys = KeyPaths
+    associatedtype KeyPaths: KeyPathMapping
 }
 
 public extension Assignable
 {
     subscript<T>(_ key: String) -> T?
     {
-        get { ifLet(CodingKeys.keyPath(for: key)) { self[keyPath: $0] } as? T }
+        set { if let keyPath = KeyPaths(stringValue: key) { self[keyPath] = newValue } }
+        get { if let keyPath = KeyPaths(stringValue: key) { return self[keyPath] } else { return nil } }
+    }
+    subscript<T>(_ key: KeyPaths) -> T?
+    {
+        get { self[keyPath: key.keyPath] as? T }
         set
         {
             let logging = false
             let newValue = unwrap(newValue as Any) as? T
-            guard let rawKeyPath = CodingKeys.keyPath(for: key) else { fatalError() }
             let log = { if logging { print("\(key) is now \(String(describing: newValue))") } }
             
             if let value = newValue,
-               let kp = rawKeyPath as? WritableKeyPath<Self, T> { self[keyPath: kp] = value; log() }
-            else if let kp = rawKeyPath as? WritableKeyPath<Self, T?> { self[keyPath: kp] = newValue; log() }
+               let kp = key.keyPath as? WritableKeyPath<Self, T> { self[keyPath: kp] = value; log() }
+            else if let kp = key.keyPath as? WritableKeyPath<Self, T?> { self[keyPath: kp] = newValue; log() }
         }
     }
     
@@ -144,7 +149,7 @@ public extension Assignable
     /// Enum types must also be Enumerable, and be CaseIterable in order to gain automatic picker support.
     mutating func set<T>(_ key: String, to newValue: T?) { self[key] = newValue }
 
-    internal static func keyPath(for key: String) -> AnyKeyPath? { CodingKeys.keyPath(for: key) }
+    internal static func keyPath(for key: String) -> AnyKeyPath? { KeyPaths.keyPath(for: key) }
 }
 
 public protocol _Assignable
@@ -176,7 +181,7 @@ internal extension Mirror
 
 // MARK: -
 
-public protocol KeyPathMapping: CodingKey, CaseIterable
+public protocol KeyPathMapping: CodingKey
 {
     var keyPath: AnyKeyPath { get }
 }

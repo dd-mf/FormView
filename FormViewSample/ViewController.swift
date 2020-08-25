@@ -57,7 +57,7 @@ class ViewController: UIViewController
             case foo, bar, baz
         }
         
-        enum CodingKeys: KeyPathMapping
+        enum KeyPaths: KeyPathMapping
         {
             case id
             case url
