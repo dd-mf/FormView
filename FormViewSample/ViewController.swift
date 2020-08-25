@@ -42,12 +42,21 @@ class ViewController: UIViewController
         var value: Decimal?
         var phone: String?
         var password: String?
+        var droid: Droid = .R2D2
         var fooBarBaz: FooBarBaz = .foo
         var _fooBarBaz: FooBarBaz? = .foo
         var twitter: String?
         var something: String?
         var orOther: String?
         var andOneMore: String?
+        
+        enum Droid: String,
+                    Codable,
+                    Enumerable,
+                    CaseIterable
+        {
+            case R2D2, C3PO, BB8, K2SO, L337, IG11
+        }
         
         enum FooBarBaz: String,
                         Codable,
@@ -66,6 +75,7 @@ class ViewController: UIViewController
             case value
             case phone
             case password
+            case droid
             case fooBarBaz
             case _fooBarBaz
             case twitter
@@ -84,6 +94,7 @@ class ViewController: UIViewController
                 case .value:        return \TestStruct.value
                 case .phone:        return \TestStruct.phone
                 case .password:     return \TestStruct.password
+                case .droid:        return \TestStruct.droid
                 case .fooBarBaz:    return \TestStruct.fooBarBaz
                 case ._fooBarBaz:   return \TestStruct._fooBarBaz
                 case .twitter:      return \TestStruct.twitter
@@ -97,12 +108,16 @@ class ViewController: UIViewController
         mutating func set<T>(_ key: String, to newValue: T?)
         {
             // fully support our enum value
-            if T.self == FooBarBaz.self ||
-               !key.contains("fooBarBaz")
+            switch KeyPaths(stringValue: key)
             {
-                self[key] = newValue
+            case .droid:
+                self[key] = newValue as? Droid
+                
+            case .fooBarBaz, ._fooBarBaz:
+                self[key] = newValue as? FooBarBaz
+                
+            default: self[key] = newValue
             }
-            else { set(key, to: newValue as? FooBarBaz) }
         }
     }
     
