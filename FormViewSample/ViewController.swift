@@ -37,14 +37,17 @@ class ViewController: UIViewController
             
             var description: String
             {
+                let appearance: String
                 switch self
                 {
-                case .BB8:  return "BB8 (Sequel Trilogy)"
-                case .K2SO: return "K2SO (Rogue One)"
-                case .L337: return "L337 (Solo)"
-                case .IG11: return "IG11 (The Mandelorian)"
-                case .R2D2, .C3PO: return "\(rawValue) (Star Wars)"
+                case .L337: appearance = "Solo"
+                case .K2SO: appearance = "Rogue One"
+                case .BB8:  appearance = "Sequel Trilogy"
+                case .IG11: appearance = "The Mandelorian"
+                case .R2D2, .C3PO: appearance = "Star Wars"
                 }
+                
+                return "\(rawValue) (\(appearance))"
             }
             
             init?(rawValue inValue: String)
