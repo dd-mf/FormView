@@ -457,6 +457,60 @@ extension FormView
             textFields[nextIndex % textFields.count].textField.becomeFirstResponder()
         }
     }
+    
+    private func configurePickerView(in container: UIView, new newPickerView: Bool)
+    {
+        guard let root = root,
+              let pickerView = pickerView else { return }
+        
+        let toolbar = createToolbar()
+        toolbar.items = execute
+        {
+            let space = { UIBarButtonItem.fixedSpace(20) }
+            return [space()] + (toolbar.items ?? []) + [space()]
+        }
+
+        root.addSubview(container)
+        
+        container.layer.borderWidth = 0.5
+        container.backgroundColor = .secondarySystemBackground
+        container.layer.borderColor = UIColor.opaqueSeparator.cgColor
+        
+        [toolbar, pickerView].forEach {
+            container.addSubview($0)
+            $0.translatesAutoresizingMaskIntoConstraints = false
+        }
+        
+        container.frame = root.bounds
+        container.frame.origin.y = root.bounds.height
+        container.frame.size.height = pickerView.frame.height +
+            toolbar.frame.height + root.safeAreaInsets.bottom
+        
+        if !newPickerView
+        {
+            container.frame = container.frame
+                .offsetBy(dx: 0, dy: -container.frame.height)
+        }
+        
+        ["H:|[toolbar]|", "H:|[pickerView]|", "V:|[toolbar][pickerView]"].forEach
+        {
+            root.addConstraints(
+                NSLayoutConstraint.constraints(withVisualFormat: $0, metrics: nil,
+                                               views: ["toolbar": toolbar,
+                                                       "pickerView": pickerView]))
+        }
+        
+        container.addConstraints([NSLayoutConstraint(
+                                    item: toolbar,
+                                    attribute: .height, relatedBy: .equal,
+                                    toItem: nil, attribute: .notAnAttribute,
+                                    multiplier: 1, constant: toolbar.frame.height),
+                                  NSLayoutConstraint(
+                                    item: pickerView,
+                                    attribute: .height, relatedBy: .equal,
+                                    toItem: nil, attribute: .notAnAttribute,
+                                    multiplier: 1, constant: pickerView.frame.height)])
+    }
 }
 
 // MARK: - UITextFieldDelegate
@@ -486,58 +540,11 @@ extension FormView: UITextFieldDelegate
         }
         
         let container = pickerView?.superview ?? UIView()
-        guard let root = self.root,
-              let pickerView = self.pickerView else { return true }
+        guard let root = root, let _ = self.pickerView else { return true }
 
         if newPickerView
         {
-            let toolbar = createToolbar()
-            toolbar.items = execute
-            {
-                let space = { UIBarButtonItem.fixedSpace(20) }
-                return [space()] + (toolbar.items ?? []) + [space()]
-            }
-
-            root.addSubview(container)
-            
-            container.layer.borderWidth = 0.5
-            container.backgroundColor = .secondarySystemBackground
-            container.layer.borderColor = UIColor.opaqueSeparator.cgColor
-            
-            [toolbar, pickerView].forEach {
-                container.addSubview($0)
-                $0.translatesAutoresizingMaskIntoConstraints = false
-            }
-            
-            container.frame = root.bounds
-            container.frame.origin.y = root.bounds.height
-            container.frame.size.height = pickerView.frame.height +
-                toolbar.frame.height + root.safeAreaInsets.bottom
-            
-            if !newPickerView
-            {
-                container.frame = container.frame
-                    .offsetBy(dx: 0, dy: -container.frame.height)
-            }
-            
-            ["H:|[toolbar]|", "H:|[pickerView]|", "V:|[toolbar][pickerView]"].forEach
-            {
-                root.addConstraints(
-                    NSLayoutConstraint.constraints(withVisualFormat: $0, metrics: nil,
-                                                   views: ["toolbar": toolbar,
-                                                           "pickerView": pickerView]))
-            }
-            
-            container.addConstraints([NSLayoutConstraint(
-                                        item: toolbar,
-                                        attribute: .height, relatedBy: .equal,
-                                        toItem: nil, attribute: .notAnAttribute,
-                                        multiplier: 1, constant: toolbar.frame.height),
-                                      NSLayoutConstraint(
-                                        item: pickerView,
-                                        attribute: .height, relatedBy: .equal,
-                                        toItem: nil, attribute: .notAnAttribute,
-                                        multiplier: 1, constant: pickerView.frame.height)])
+            configurePickerView(in: container, new: newPickerView)
         }
         
         UIView.animate(withDuration: newPickerView ? animationDuration : 0)
