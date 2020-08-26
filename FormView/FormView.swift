@@ -145,56 +145,61 @@ public class FormView: UIScrollView
             return values
         }
         
-        // pull rawValues from textFields
-        var textFieldsMap = [String: UITextField]()
-        var values = textFields.reduce([String: Any]())
-        {
-            guard let label = $1.placeholder,
-                  let value = $1.text else { return $0 }
-            
-            textFieldsMap[label] = $1
-            return $0.merging([label: value]) { (_, new) in new }
-        }
+        // create dictionary of mirror children
+        let properties = Mirror(reflecting: data)
+            .children.reduce([String: Any]())
+            {
+                guard let label = $1.label else { return $0 }
+                return $0.merging([label: $1.value]) { (_, new) in new }
+            }
         
         var updatedData = data as? _Assignable // copy on exit
         defer { if let newData = updatedData { _data = newData } }
         
-        // convert rawValues into supportedType of data
-        for property in Mirror(reflecting: data).children
+        // pull rawValues from textFields
+        return textFields.reduce([String: Any]())
         {
-            guard let propertyName = property.label else { continue }
-
-            guard let supportedType = SupportedType(property)
-            else { values.removeValue(forKey: propertyName); continue }
+            let textField = $1.textField
+            let supportedType = $1.supportedType
+            guard let propertyName = textField.placeholder,
+                  let rawValue = textField.text else { return $0 }
             
-            let rawValue = values[propertyName] as? String ?? ""
             let newValue: Any? = execute
             {
                 let newValue = supportedType.convert(rawValue)
-                let mirror = Mirror(reflecting: property.value)
+                guard let propertyValue =
+                        properties[propertyName] else { return newValue }
+                
+                let mirror = Mirror(reflecting: propertyValue)
                 return !rawValue.isEmpty || !mirror.isA(.optional) ? newValue : nil
             }
             
-            updatedData = supportedType.setter(
-                for: propertyName, on: &updatedData)(newValue as Any)
-            
-            values[propertyName] = (updatedData != nil) ?
-                ifLet(updatedData?[propertyName]) { $0 } : newValue
-            
-            if updatedData != nil
-            {   // copy values back from updatedData to handle non-optionals
-                textFieldsMap[propertyName]?.text =
-                    ifLet(unwrap(values[propertyName] as Any)) { "\($0)" }
+            updatedData = supportedType.setter(for: propertyName,
+                                               on: &updatedData)(newValue as Any)
+            let finalValue: Any?
+            if updatedData == nil
+            {
+                finalValue = newValue as Any
             }
+            else
+            {   // copy values back from updatedData to handle non-optionals
+                finalValue = ifLet(updatedData?[propertyName]) { $0 }
+                textField.text = ifLet(unwrap(finalValue as Any)) { "\($0)" }
+            }
+
+            guard finalValue != nil else { return $0 }
+            return $0.merging([propertyName: finalValue!]) { (_, new) in new }
         }
-        
-        return values
     }
 
-    private var textFields = [UITextField]()
+    private var textFields = [TextFieldInfo]()
+    private var pickerView: PickerView?
     private weak var currentTextField: UITextField?
     public weak var textFieldDelegate: UITextFieldDelegate?
-    
+
+    private typealias TextFieldInfo =
+        (textField: UITextField, supportedType: SupportedType)
+
     // MARK:
     
     deinit { NotificationCenter.default.removeObserver(self) }
@@ -273,9 +278,28 @@ extension FormView
 
         textField.keyboardType = supportedType.keyboardType
         
+        textFields.append((textField: textField,
+                           supportedType: supportedType))
         return textField
     }
     
+    private func createToolbar(back: Selector = #selector(advanceToPrevTextField),
+                               next: Selector = #selector(advanceToNextTextField),
+                               done: Selector = #selector(stopEditing)) -> UIToolbar
+    {
+        let toolbar = UIToolbar()
+        defer { toolbar.sizeToFit() }
+
+        toolbar.items = [
+            UIBarButtonItem(title: "\u{2191}", style: .plain, target: (self, back)),
+            UIBarButtonItem(title: "\u{2193}", style: .plain, target: (self, next)),
+            UIBarButtonItem.flexibleSpace, UIBarButtonItem(title: "Done", style: .plain,
+                                                           target: delegate, action: done)
+        ]
+
+        return toolbar
+    }
+
     public enum LabelStyle
     {
         case none, `default`, centerAligned, leftAligned
@@ -293,32 +317,15 @@ extension FormView
     {
         _data = template
         var labelWidth: CGFloat = 0
+        let toolbar = createToolbar()
 
-        defer { textFields.last?.returnKeyType = .done }
-        
-        let toolbar: UIToolbar = execute {
-            let toolbar = UIToolbar()
-            
-            toolbar.items = [
-                UIBarButtonItem(title: "\u{2191}", style: .plain,
-                                target: self, action: #selector(advanceToPrevTextField)),
-                UIBarButtonItem(title: "\u{2193}", style: .plain,
-                                target: self, action: #selector(advanceToNextTextField)),
-                UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
-                UIBarButtonItem(title: "Done", style: .plain,
-                                target: delegate, action: #selector(stopEditing))
-            ]
-
-            toolbar.sizeToFit()
-            return toolbar
-        }
+        defer { textFields.last?.textField.returnKeyType = .done }
 
         for property in Mirror(reflecting: template).children
         {
             guard let textField = createTextField(for: property) else { continue }
             
             customize?(textField)
-            textFields.append(textField)
             textField.tag = textFields.count
 
             textField.delegate = textField.delegate ?? self
@@ -381,7 +388,18 @@ extension FormView
 
 extension FormView
 {
-    @objc public func stopEditing() { currentTextField?.resignFirstResponder() }
+    @objc public func stopEditing()
+    {
+        if currentTextField?.resignFirstResponder() == false
+        {
+            currentTextField = nil
+            assert(pickerView != nil)
+            assert(pickerView?.superview != nil)
+            
+            defer { pickerView = nil } // release it all
+            pickerView?.superview?.removeFromSuperview()
+        }
+    }
     
     /// add/remove extra padding to scrollView.contentSize so everything can be viewed
     @objc private func keyboardChanged(_ notification: Notification)
@@ -419,7 +437,7 @@ extension FormView
         let nextIndex = textField.tag + (forward ? 1 : -1) - 1
         if nextIndex >= 0, nextIndex < textFields.count
         {
-            textFields[nextIndex % textFields.count].becomeFirstResponder()
+            textFields[nextIndex % textFields.count].textField.becomeFirstResponder()
         }
     }
 }
@@ -428,6 +446,81 @@ extension FormView
 
 extension FormView: UITextFieldDelegate
 {
+    public func textFieldShouldBeginEditing(_ textField: UITextField) -> Bool
+    {
+        let match = { (info: TextFieldInfo) in info.textField === textField }
+        guard case let .enum(type) =
+                textFields.first(where: match)?.supportedType
+        else { if pickerView != nil { stopEditing() }; return true }
+        
+        guard pickerView != nil || currentTextField?
+                .resignFirstResponder() ?? true else { return true }
+        
+        currentTextField = textField
+        pickerView = pickerView ?? PickerView()
+        pickerView?.components = [type.allValues]
+        pickerView?.currentSelection = textField.text
+        pickerView?.selectionChanged = {
+            [weak self, weak textField] (pickerView, component) in
+            self?.isDirty = true
+            textField?.text = pickerView.currentSelection as? String
+        }
+        
+        let toolbar = createToolbar()
+        toolbar.items = execute
+        {
+            let space = { UIBarButtonItem.fixedSpace(20) }
+            return [space()] + (toolbar.items ?? []) + [space()]
+        }
+        
+        let container = pickerView?.superview ?? UIView()
+        guard let root = self.root,
+              let pickerView = self.pickerView else { return true }
+        
+        root.addSubview(container)
+        
+        container.layer.borderWidth = 0.5
+        container.backgroundColor = .secondarySystemBackground
+        container.layer.borderColor = UIColor.opaqueSeparator.cgColor
+        
+        [toolbar, pickerView].forEach { container.addSubview($0) }
+        [container, toolbar, pickerView].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+        }
+
+        let height = pickerView.frame.height +
+            toolbar.frame.height + root.safeAreaInsets.bottom
+        let containerHeight = NSLayoutConstraint(
+            item: container, attribute: .height, relatedBy: .equal,
+            toItem: nil, attribute: .notAnAttribute, multiplier: 1, constant: 0)
+        
+        ["H:|[container]|", "V:[container]|", "H:|[toolbar]|",
+         "H:|[pickerView]|", "V:|[toolbar][pickerView]"].forEach
+        {
+            root.addConstraints(
+                NSLayoutConstraint.constraints(withVisualFormat: $0, metrics: nil,
+                                               views: ["toolbar": toolbar,
+                                                       "container": container,
+                                                       "pickerView": pickerView]))
+        }
+        
+        container.addConstraints([containerHeight,
+                                  NSLayoutConstraint(
+                                    item: toolbar,
+                                    attribute: .height, relatedBy: .equal,
+                                    toItem: nil, attribute: .notAnAttribute,
+                                    multiplier: 1, constant: toolbar.frame.height),
+                                  NSLayoutConstraint(
+                                    item: pickerView,
+                                    attribute: .height, relatedBy: .equal,
+                                    toItem: nil, attribute: .notAnAttribute,
+                                    multiplier: 1, constant: pickerView.frame.height)])
+        
+        UIView.animate(withDuration: 1) { containerHeight.constant = height }
+
+        return false
+    }
+    
     // ensure textField is visible above virtual keyboard
     public func textFieldDidBeginEditing(_ textField: UITextField)
     {
@@ -436,8 +529,8 @@ extension FormView: UITextFieldDelegate
         if let toolbarItems =
             (textField.inputAccessoryView as? UIToolbar)?.items
         {
-            toolbarItems[0].isEnabled = textField != textFields.first
-            toolbarItems[1].isEnabled = textField != textFields.last
+            toolbarItems[0].isEnabled = textField != textFields.first?.textField
+            toolbarItems[1].isEnabled = textField != textFields.last?.textField
         }
 
         if !bounds.inset(by: contentInset).contains(textField.frame)

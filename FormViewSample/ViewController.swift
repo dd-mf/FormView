@@ -19,7 +19,7 @@ class ViewController: UIViewController
         var value: Decimal?
         var phone: String?
         var password: String?
-        var droid: Droid = .R2D2
+        var bestDroid: Droid = .R2D2
         var fooBarBaz: FooBarBaz = .foo
         var _fooBarBaz: FooBarBaz? = .foo
         var twitter: String?
@@ -30,9 +30,22 @@ class ViewController: UIViewController
         enum Droid: String,
                     Codable,
                     Enumerable,
-                    CaseIterable
+                    CaseIterable,
+                    CustomStringConvertible
         {
             case R2D2, C3PO, BB8, K2SO, L337, IG11
+            
+            var description: String
+            {
+                switch self
+                {
+                case .BB8:  return "BB8 (Sequel Trilogy)"
+                case .K2SO: return "K2SO (Rogue One)"
+                case .L337: return "L337 (Solo)"
+                case .IG11: return "IG11 (The Mandelorian)"
+                case .R2D2, .C3PO: return "\(rawValue) (Star Wars)"
+                }
+            }
         }
         
         enum FooBarBaz: String,
@@ -52,7 +65,7 @@ class ViewController: UIViewController
             case value
             case phone
             case password
-            case droid
+            case bestDroid
             case fooBarBaz
             case _fooBarBaz
             case twitter
@@ -71,7 +84,7 @@ class ViewController: UIViewController
                 case .value:        return \TestStruct.value
                 case .phone:        return \TestStruct.phone
                 case .password:     return \TestStruct.password
-                case .droid:        return \TestStruct.droid
+                case .bestDroid:    return \TestStruct.bestDroid
                 case .fooBarBaz:    return \TestStruct.fooBarBaz
                 case ._fooBarBaz:   return \TestStruct._fooBarBaz
                 case .twitter:      return \TestStruct.twitter
@@ -87,7 +100,7 @@ class ViewController: UIViewController
             // fully support our enum value
             switch KeyPaths(stringValue: key)
             {
-            case .droid:
+            case .bestDroid:
                 self[key] = newValue as? Droid
                 
             case .fooBarBaz, ._fooBarBaz:

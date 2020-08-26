@@ -7,6 +7,18 @@
 
 import UIKit
 
+extension UIView
+{
+    var root: UIView?
+    {
+        guard let superview =
+                superview else { return nil }
+        
+        let root = superview.root
+        return root == nil ? superview : root
+    }
+}
+
 func execute<T>(_ action: () -> T) -> T { return action() }
 
 func type<T: Any>(of thing: Any, is: T.Type) -> Bool
