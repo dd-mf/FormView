@@ -46,6 +46,15 @@ class ViewController: UIViewController
                 case .R2D2, .C3PO: return "\(rawValue) (Star Wars)"
                 }
             }
+            
+            init?(rawValue inValue: String)
+            {
+                let rawValue = inValue.components(separatedBy: " ").first
+                if let this = Self.allCases.first(
+                    where: { $0.rawValue == rawValue }) { self = this; return }
+                
+                return nil
+            }
         }
         
         enum FooBarBaz: String,
