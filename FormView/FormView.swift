@@ -278,6 +278,7 @@ extension FormView
             textField.autocapitalizationType = .none
         }
 
+        textField.textColor = .label
         textField.keyboardType = supportedType.keyboardType
         textField.font = .preferredFont(forTextStyle: .body)
 
@@ -396,6 +397,8 @@ extension FormView
     {
         if currentTextField?.resignFirstResponder() == false
         {
+            currentTextField?.textColor = .label
+
             currentTextField = nil
             assert(pickerView != nil)
             assert(pickerView?.superview != nil)
@@ -526,6 +529,9 @@ extension FormView: UITextFieldDelegate
         
         guard pickerView != nil || currentTextField?
                 .resignFirstResponder() ?? true else { return true }
+        
+        textField.textColor = .systemBlue
+        currentTextField?.textColor = .label
         
         currentTextField = textField
         let newPickerView = pickerView == nil
