@@ -294,7 +294,7 @@ extension FormView
             UIBarButtonItem(title: "\u{2191}", style: .plain, target: (self, back)),
             UIBarButtonItem(title: "\u{2193}", style: .plain, target: (self, next)),
             UIBarButtonItem.flexibleSpace, UIBarButtonItem(title: "Done", style: .plain,
-                                                           target: delegate, action: done)
+                                                           target: self, action: done)
         ]
 
         return toolbar
