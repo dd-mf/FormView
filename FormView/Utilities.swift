@@ -190,3 +190,42 @@ extension KeyPathMapping
 {
     static func keyPath(for key: String) -> AnyKeyPath? { Self(stringValue: key)?.keyPath }
 }
+
+// MARK: -
+
+public extension UIBarButtonItem
+{
+    typealias Target = (Any, Selector)
+
+    convenience init(title: String?, style: UIBarButtonItem.Style, target: Target? = nil)
+    {
+        self.init(title: title, style: style, target: target?.0, action: target?.1)
+    }
+    
+    convenience init(barButtonSystemItem systemItem: UIBarButtonItem.SystemItem, target: Target? = nil)
+    {
+        self.init(barButtonSystemItem: systemItem, target: target?.0, action: target?.1)
+    }
+    
+    convenience init(image: UIImage?,
+                     landscapeImagePhone landscapeImage: UIImage? = nil,
+                     style: UIBarButtonItem.Style, target: Target? = nil)
+    {
+        self.init(image: image, landscapeImagePhone: landscapeImage,
+                  style: style, target: target?.0, action: target?.1)
+    }
+
+    class func fixedSpace(_ width: CGFloat) -> UIBarButtonItem
+    {
+        let result = UIBarButtonItem(barButtonSystemItem: .fixedSpace)
+        result.width = width
+        return result
+    }
+
+    class var flexibleSpace: UIBarButtonItem
+    {
+        if #available(iOS 14.0, *) { return flexibleSpace() }
+        else { return UIBarButtonItem(barButtonSystemItem: .flexibleSpace) }
+    }
+}
+

@@ -8,29 +8,6 @@
 import UIKit
 import FormView
 
-extension UIBarButtonItem
-{
-    typealias Target = (Any, Selector)
-    
-    convenience init(image: UIImage?,
-                     landscapeImagePhone landscapeImage: UIImage? = nil,
-                     style: UIBarButtonItem.Style, target: Target?)
-    {
-        self.init(image: image, landscapeImagePhone: landscapeImage,
-                  style: style, target: target?.0, action: target?.1)
-    }
-
-    convenience init(title: String?, style: UIBarButtonItem.Style, target: Target?)
-    {
-        self.init(title: title, style: style, target: target?.0, action: target?.1)
-    }
-    
-    convenience init(barButtonSystemItem systemItem: UIBarButtonItem.SystemItem, target: Target?)
-    {
-        self.init(barButtonSystemItem: systemItem, target: target?.0, action: target?.1)
-    }
-}
-
 class ViewController: UIViewController
 {
     struct TestStruct: Assignable
