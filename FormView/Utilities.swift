@@ -99,12 +99,15 @@ func ifLet<T, Y>(_ optional: T?,
 
 extension CGRect
 {
-    mutating func inset(by edge: UIEdgeInsets)
+    func inset(by edge: UIEdgeInsets) -> CGRect
     {
-        origin.y += edge.top
-        origin.x += edge.left
-        size.width -= edge.right - edge.left
-        size.height -= edge.bottom - edge.top
+        var this = self
+        this.origin.y += edge.top
+        this.origin.x += edge.left
+        this.size.width -= edge.right - edge.left
+        this.size.height -= edge.bottom - edge.top
+        
+        return this
     }
 }
 

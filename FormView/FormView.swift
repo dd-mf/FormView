@@ -7,6 +7,8 @@
 
 import UIKit
 
+fileprivate let animationDuration = 0.2
+
 fileprivate extension CGFloat
 {
     static let defaultSpacing = CGFloat(8)
@@ -277,7 +279,8 @@ extension FormView
         }
 
         textField.keyboardType = supportedType.keyboardType
-        
+        textField.font = .preferredFont(forTextStyle: .body)
+
         textFields.append((textField: textField,
                            supportedType: supportedType))
         return textField
@@ -356,6 +359,7 @@ extension FormView
                 if labels.style == .centerAligned
                 {
                     label.textAlignment = .right
+                    label.font = textField.font
                     labelWidth = max(labelWidth,
                                      label.intrinsicContentSize.width)
                 }
@@ -396,8 +400,18 @@ extension FormView
             assert(pickerView != nil)
             assert(pickerView?.superview != nil)
             
-            defer { pickerView = nil } // release it all
-            pickerView?.superview?.removeFromSuperview()
+            guard let container = pickerView?.superview else { return }
+            
+            UIView.animate(withDuration: animationDuration) {
+                container.frame = container.frame.offsetBy(dx: 0, dy: container.frame.height)
+            }
+            completion: { _ in
+                self.pickerView = nil
+                container.removeFromSuperview()
+                NotificationCenter.default.post(
+                    name: UIResponder.keyboardDidHideNotification, object: nil,
+                    userInfo: [UIResponder.keyboardFrameEndUserInfoKey: NSValue(cgRect: container.frame)])
+            }
         }
     }
     
@@ -406,20 +420,23 @@ extension FormView
     {
         guard notification.name == UIResponder.keyboardWillShowNotification else
         {
-            return UIView.animate(withDuration: 0.3)
+            return UIView.animate(withDuration: animationDuration)
             {
                 self.contentInset = .zero
                 self.scrollIndicatorInsets = .zero
             }
         }
         
-        guard let frameInfo = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey],
-              let keyboardFrame = (frameInfo as? NSValue)?.cgRectValue else { return }
+        let frameKey = UIResponder.keyboardFrameEndUserInfoKey
+        guard let frameInfo = notification.userInfo?[frameKey],
+              let frame = (frameInfo as? NSValue)?.cgRectValue,
+              let keyboardFrame = root?.convert(frame, to: self),
+              frame.intersects(keyboardFrame) else { return }
 
         let contentInsets = UIEdgeInsets(top: 0, left: 0,
                                          bottom: keyboardFrame.height, right: 0)
         
-        UIView.animate(withDuration: 0.3)
+        UIView.animate(withDuration: animationDuration)
         {
             self.contentInset = contentInsets
             self.scrollIndicatorInsets = contentInsets
@@ -457,6 +474,8 @@ extension FormView: UITextFieldDelegate
                 .resignFirstResponder() ?? true else { return true }
         
         currentTextField = textField
+        let newPickerView = pickerView == nil
+        
         pickerView = pickerView ?? PickerView()
         pickerView?.components = [type.allValues]
         pickerView?.currentSelection = textField.text
@@ -466,57 +485,71 @@ extension FormView: UITextFieldDelegate
             textField?.text = pickerView.currentSelection as? String
         }
         
-        let toolbar = createToolbar()
-        toolbar.items = execute
-        {
-            let space = { UIBarButtonItem.fixedSpace(20) }
-            return [space()] + (toolbar.items ?? []) + [space()]
-        }
-        
         let container = pickerView?.superview ?? UIView()
         guard let root = self.root,
               let pickerView = self.pickerView else { return true }
-        
-        root.addSubview(container)
-        
-        container.layer.borderWidth = 0.5
-        container.backgroundColor = .secondarySystemBackground
-        container.layer.borderColor = UIColor.opaqueSeparator.cgColor
-        
-        [toolbar, pickerView].forEach { container.addSubview($0) }
-        [container, toolbar, pickerView].forEach {
-            $0.translatesAutoresizingMaskIntoConstraints = false
-        }
 
-        let height = pickerView.frame.height +
-            toolbar.frame.height + root.safeAreaInsets.bottom
-        let containerHeight = NSLayoutConstraint(
-            item: container, attribute: .height, relatedBy: .equal,
-            toItem: nil, attribute: .notAnAttribute, multiplier: 1, constant: 0)
-        
-        ["H:|[container]|", "V:[container]|", "H:|[toolbar]|",
-         "H:|[pickerView]|", "V:|[toolbar][pickerView]"].forEach
+        if newPickerView
         {
-            root.addConstraints(
-                NSLayoutConstraint.constraints(withVisualFormat: $0, metrics: nil,
-                                               views: ["toolbar": toolbar,
-                                                       "container": container,
-                                                       "pickerView": pickerView]))
+            let toolbar = createToolbar()
+            toolbar.items = execute
+            {
+                let space = { UIBarButtonItem.fixedSpace(20) }
+                return [space()] + (toolbar.items ?? []) + [space()]
+            }
+
+            root.addSubview(container)
+            
+            container.layer.borderWidth = 0.5
+            container.backgroundColor = .secondarySystemBackground
+            container.layer.borderColor = UIColor.opaqueSeparator.cgColor
+            
+            [toolbar, pickerView].forEach {
+                container.addSubview($0)
+                $0.translatesAutoresizingMaskIntoConstraints = false
+            }
+            
+            container.frame = root.bounds
+            container.frame.origin.y = root.bounds.height
+            container.frame.size.height = pickerView.frame.height +
+                toolbar.frame.height + root.safeAreaInsets.bottom
+            
+            if !newPickerView
+            {
+                container.frame = container.frame
+                    .offsetBy(dx: 0, dy: -container.frame.height)
+            }
+            
+            ["H:|[toolbar]|", "H:|[pickerView]|", "V:|[toolbar][pickerView]"].forEach
+            {
+                root.addConstraints(
+                    NSLayoutConstraint.constraints(withVisualFormat: $0, metrics: nil,
+                                                   views: ["toolbar": toolbar,
+                                                           "pickerView": pickerView]))
+            }
+            
+            container.addConstraints([NSLayoutConstraint(
+                                        item: toolbar,
+                                        attribute: .height, relatedBy: .equal,
+                                        toItem: nil, attribute: .notAnAttribute,
+                                        multiplier: 1, constant: toolbar.frame.height),
+                                      NSLayoutConstraint(
+                                        item: pickerView,
+                                        attribute: .height, relatedBy: .equal,
+                                        toItem: nil, attribute: .notAnAttribute,
+                                        multiplier: 1, constant: pickerView.frame.height)])
         }
         
-        container.addConstraints([containerHeight,
-                                  NSLayoutConstraint(
-                                    item: toolbar,
-                                    attribute: .height, relatedBy: .equal,
-                                    toItem: nil, attribute: .notAnAttribute,
-                                    multiplier: 1, constant: toolbar.frame.height),
-                                  NSLayoutConstraint(
-                                    item: pickerView,
-                                    attribute: .height, relatedBy: .equal,
-                                    toItem: nil, attribute: .notAnAttribute,
-                                    multiplier: 1, constant: pickerView.frame.height)])
-        
-        UIView.animate(withDuration: 1) { containerHeight.constant = height }
+        UIView.animate(withDuration: newPickerView ? animationDuration : 0)
+        {
+            container.frame.origin.y = root.bounds.maxY - container.frame.height
+        }
+        completion:
+        {
+            _ in NotificationCenter.default.post(
+                name: UIResponder.keyboardWillShowNotification, object: nil,
+                userInfo: [UIResponder.keyboardFrameEndUserInfoKey: NSValue(cgRect: container.frame)])
+        }
 
         return false
     }
@@ -533,9 +566,10 @@ extension FormView: UITextFieldDelegate
             toolbarItems[1].isEnabled = textField != textFields.last?.textField
         }
 
-        if !bounds.inset(by: contentInset).contains(textField.frame)
+        let textFrame = convert(textField.frame, from: textField)
+        if !bounds.inset(by: contentInset).contains(textFrame)
         {
-            scrollRectToVisible(textField.frame, animated: true)
+            scrollRectToVisible(textFrame, animated: true)
         }
     }
 
