@@ -19,8 +19,8 @@ fileprivate extension CGFloat
 fileprivate enum SupportedType
 {
     case int, decimal
-    case `enum`(Enumerable.Type)
     case string(UIKeyboardType)
+    case `enum`(Enumerable.Type, isOptional: Bool)
 
     init?(_ property: Mirror.Child)
     {
@@ -28,7 +28,8 @@ fileprivate enum SupportedType
         
         if let enumerable = unwrap(value) as? Enumerable
         {
-            self = .enum(type(of: enumerable))
+            self = .enum(type(of: enumerable), isOptional:
+                            Mirror(reflecting: value).isA(.optional))
         }
         else if type(of: value, is: String.self)
         {
@@ -61,7 +62,7 @@ fileprivate enum SupportedType
         case .decimal: return { Decimal(string: $0) }
         case .string(.URL): return { URL(string: $0) }
             
-        case .enum(let type): return { type.init(rawValue: $0) }
+        case .enum(let type, _): return { type.init(rawValue: $0) }
 
         case .string(.phonePad):
             let nonDigits = CharacterSet.decimalDigits.inverted
@@ -97,7 +98,7 @@ fileprivate enum SupportedType
         switch self
         {
         case .int: return .numberPad
-        case .enum(_): return .default
+        case .enum(_,_): return .default
         case .decimal: return .decimalPad
         case .string(let keyboardType): return keyboardType
         }
@@ -529,9 +530,12 @@ extension FormView: UITextFieldDelegate
     public func textFieldShouldBeginEditing(_ textField: UITextField) -> Bool
     {
         let match = { (info: TextFieldInfo) in info.textField === textField }
-        guard case let .enum(type) =
-                textFields.first(where: match)?.supportedType
-        else { if pickerView != nil { stopEditing() }; return true }
+        guard let supportedType = textFields.first(where: match)?.supportedType,
+              case let .enum(type, isOptional: optional) = supportedType else
+        {
+            if pickerView != nil { stopEditing() }
+            return true
+        }
         
         guard pickerView != nil || currentTextField?
                 .resignFirstResponder() ?? true else { return true }
@@ -543,7 +547,9 @@ extension FormView: UITextFieldDelegate
         let newPickerView = pickerView == nil
         
         pickerView = pickerView ?? PickerView()
-        pickerView?.components = [type.allValues]
+        pickerView?.components = // add empty value?
+            [(optional ? [""] : []) + type.allValues]
+        
         pickerView?.currentSelection = textField.text
         pickerView?.selectionChanged = {
             [weak self, weak textField] (pickerView, _) in
