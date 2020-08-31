@@ -75,14 +75,20 @@ fileprivate enum SupportedType
     {
         guard var target = target else { return { _ in nil} }
         
+        func set<T>(as type: T.Type) -> (Any) -> (_Assignable?)
+        {
+            return { target.set(key, to: $0 as? T); return target }
+        }
+        
         switch self
         {
-        case .enum(_):      return { target.set(key, to: $0); return target }
-        case .int:          return { target.set(key, to: $0 as? Int); return target }
-        case .decimal:      return { target.set(key, to: $0 as? Decimal); return target }
-        case .string(.URL): return { target.set(key, to: $0 as? URL); return target }
-
-        default:            return { target.set(key, to: $0 as? String); return target }
+        case .enum(_,_):    return set(as: Any.self)
+        case .string(.URL): return set(as: URL.self)
+            
+        case .int:          return set(as: Int.self)
+        case .decimal:      return set(as: Decimal.self)
+        
+        default:            return set(as: String.self)
         }
     }
     
@@ -540,7 +546,7 @@ extension FormView: UITextFieldDelegate
         pickerView?.components = [type.allValues]
         pickerView?.currentSelection = textField.text
         pickerView?.selectionChanged = {
-            [weak self, weak textField] (pickerView, component) in
+            [weak self, weak textField] (pickerView, _) in
             self?.isDirty = true
             textField?.text = pickerView.currentSelection as? String
         }
