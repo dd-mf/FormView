@@ -213,7 +213,7 @@ public class FormView: UIScrollView
         addSubview(stack)
  
         for notification in
-            [UIResponder.keyboardWillShowNotification,
+            [UIResponder.keyboardDidShowNotification,
              UIResponder.keyboardWillHideNotification]
         {
             NotificationCenter.default.addObserver(
@@ -412,7 +412,7 @@ extension FormView
                 self.pickerView = nil
                 container.removeFromSuperview()
                 NotificationCenter.default.post(
-                    name: UIResponder.keyboardDidHideNotification, object: nil,
+                    name: UIResponder.keyboardWillHideNotification, object: nil,
                     userInfo: [UIResponder.keyboardFrameEndUserInfoKey: NSValue(cgRect: container.frame)])
             }
         }
@@ -421,7 +421,7 @@ extension FormView
     /// add/remove extra padding to scrollView.contentSize so everything can be viewed
     @objc private func keyboardChanged(_ notification: Notification)
     {
-        guard notification.name == UIResponder.keyboardWillShowNotification else
+        guard notification.name == UIResponder.keyboardDidShowNotification else
         {
             return UIView.animate(withDuration: animationDuration)
             {
@@ -560,7 +560,7 @@ extension FormView: UITextFieldDelegate
         completion:
         {
             _ in NotificationCenter.default.post(
-                name: UIResponder.keyboardWillShowNotification, object: nil,
+                name: UIResponder.keyboardDidShowNotification, object: nil,
                 userInfo: [UIResponder.keyboardFrameEndUserInfoKey: NSValue(cgRect: container.frame)])
         }
 
