@@ -212,6 +212,19 @@ public extension UIBarButtonItem
 {
     typealias Target = (Any, Selector)
 
+    class func fixedSpace(_ width: CGFloat) -> UIBarButtonItem
+    {
+        let result = UIBarButtonItem(barButtonSystemItem: .fixedSpace)
+        result.width = width
+        return result
+    }
+
+    class var flexibleSpace: UIBarButtonItem
+    {
+        if #available(iOS 14.0, *) { return flexibleSpace() }
+        else { return UIBarButtonItem(barButtonSystemItem: .flexibleSpace) }
+    }
+
     convenience init(title: String?, style: UIBarButtonItem.Style, target: Target? = nil)
     {
         self.init(title: title, style: style, target: target?.0, action: target?.1)
@@ -228,19 +241,6 @@ public extension UIBarButtonItem
     {
         self.init(image: image, landscapeImagePhone: landscapeImage,
                   style: style, target: target?.0, action: target?.1)
-    }
-
-    class func fixedSpace(_ width: CGFloat) -> UIBarButtonItem
-    {
-        let result = UIBarButtonItem(barButtonSystemItem: .fixedSpace)
-        result.width = width
-        return result
-    }
-
-    class var flexibleSpace: UIBarButtonItem
-    {
-        if #available(iOS 14.0, *) { return flexibleSpace() }
-        else { return UIBarButtonItem(barButtonSystemItem: .flexibleSpace) }
     }
 }
 
