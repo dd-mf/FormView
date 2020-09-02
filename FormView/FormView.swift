@@ -11,7 +11,7 @@ fileprivate let animationDuration = 0.2
 
 fileprivate extension CGFloat
 {
-    static let defaultSpacing = CGFloat(8)
+    static let stackSpacing = CGFloat(8)
 }
 
 // MARK: -
@@ -129,7 +129,7 @@ public class FormView: UIScrollView
         
         stack.axis = .vertical
         stack.distribution = .fill
-        stack.spacing = .defaultSpacing
+        stack.spacing = .stackSpacing
         stack.translatesAutoresizingMaskIntoConstraints = false
         
         return stack
