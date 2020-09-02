@@ -7,11 +7,14 @@
 
 import UIKit
 
-fileprivate let animationDuration = 0.2
-
 fileprivate extension CGFloat
 {
     static let stackSpacing = CGFloat(8)
+}
+
+fileprivate extension TimeInterval
+{
+    static let animationDuration = 0.2
 }
 
 // MARK: -
@@ -412,7 +415,7 @@ extension FormView
             
             guard let container = pickerView?.superview else { return }
             
-            UIView.animate(withDuration: animationDuration) {
+            UIView.animate(withDuration: .animationDuration) {
                 container.frame = container.frame.offsetBy(dx: 0, dy: container.frame.height)
             }
             completion: { _ in
@@ -430,7 +433,7 @@ extension FormView
     {
         guard notification.name == UIResponder.keyboardDidShowNotification else
         {
-            return UIView.animate(withDuration: animationDuration)
+            return UIView.animate(withDuration: .animationDuration)
             {
                 self.contentInset = .zero
                 self.scrollIndicatorInsets = .zero
@@ -446,7 +449,7 @@ extension FormView
         let contentInsets = UIEdgeInsets(top: 0, left: 0,
                                          bottom: keyboardFrame.height, right: 0)
         
-        UIView.animate(withDuration: animationDuration)
+        UIView.animate(withDuration: .animationDuration)
         {
             self.contentInset = contentInsets
             self.scrollIndicatorInsets = contentInsets
@@ -564,8 +567,8 @@ extension FormView: UITextFieldDelegate
         {
             configurePickerView(in: container, new: newPickerView)
         }
-        
-        UIView.animate(withDuration: newPickerView ? animationDuration : 0)
+
+        UIView.animate(withDuration: newPickerView ? .animationDuration : 0)
         {
             container.frame.origin.y = root.bounds.maxY - container.frame.height
         }
