@@ -19,97 +19,6 @@ fileprivate extension TimeInterval
 
 // MARK: -
 
-fileprivate enum SupportedType
-{
-    case int, decimal
-    case string(UIKeyboardType)
-    case `enum`(Enumerable.Type, isOptional: Bool)
-
-    init?(_ property: Mirror.Child)
-    {
-        let value = property.value
-        
-        if let enumerable = unwrap(value) as? Enumerable
-        {
-            self = .enum(type(of: enumerable), isOptional:
-                            Mirror(reflecting: value).isA(.optional))
-        }
-        else if type(of: value, is: String.self)
-        {
-            var keyboardType: UIKeyboardType = .default
-            for (keyword, keyboard): (String, UIKeyboardType) in
-                [("email", .emailAddress), ("url", .URL),
-                 ("phone", .phonePad), ("twitter", .twitter)]
-            {
-                if property.label?
-                    .contains(keyword) == true
-                {
-                    keyboardType = keyboard; break
-                }
-            }
-            
-            self = .string(keyboardType)
-        }
-        else if type(of: value, is: Int.self) { self = .int }
-        else if type(of: value, is: Decimal.self) { self = .decimal }
-        else if type(of: value, is: URL.self) { self = .string(.URL) }
-
-        else { return nil }
-    }
-    
-    var convert: (String) -> (Any?)
-    {
-        switch self
-        {
-        case .int: return { Int($0) }
-        case .decimal: return { Decimal(string: $0) }
-        case .string(.URL): return { URL(string: $0) }
-            
-        case .enum(let type, _): return { type.init(rawValue: $0) }
-
-        case .string(.phonePad):
-            let nonDigits = CharacterSet.decimalDigits.inverted
-            return { $0.components(separatedBy: nonDigits).joined() }
-
-        default: return { $0 }
-        }
-    }
-    
-    func setter(for key: String, on target: inout _Assignable?) -> (Any) -> (_Assignable?)
-    {
-        guard var target = target else { return { _ in nil} }
-        
-        func set<T>(as type: T.Type) -> (Any) -> (_Assignable?)
-        {
-            return { target.set(key, to: $0 as? T); return target }
-        }
-        
-        switch self
-        {
-        case .enum(_,_):    return set(as: Any.self)
-        case .string(.URL): return set(as: URL.self)
-            
-        case .int:          return set(as: Int.self)
-        case .decimal:      return set(as: Decimal.self)
-        
-        default:            return set(as: String.self)
-        }
-    }
-    
-    var keyboardType: UIKeyboardType
-    {
-        switch self
-        {
-        case .int: return .numberPad
-        case .enum(_,_): return .default
-        case .decimal: return .decimalPad
-        case .string(let keyboardType): return keyboardType
-        }
-    }
-}
-
-// MARK: -
-
 public class FormView: UIScrollView
 {
     public var data: Any?
@@ -148,7 +57,7 @@ public class FormView: UIScrollView
             Mirror(reflecting: data).children.forEach
             {
                 if let label = $0.label,
-                   let _ = SupportedType($0)
+                   let _ = Property($0)
                 {
                     values[label] = unwrap($0.value)
                 }
@@ -172,7 +81,7 @@ public class FormView: UIScrollView
         return textFields.reduce([String: Any]())
         {
             let textField = $1.textField
-            let supportedType = $1.supportedType
+            let supportedType = $1.property
             guard let propertyName = textField.placeholder,
                   let rawValue = textField.text else { return $0 }
             
@@ -205,12 +114,13 @@ public class FormView: UIScrollView
     }
 
     private var textFields = [TextFieldInfo]()
+    private typealias TextFieldInfo =
+        (textField: UITextField, property: Property)
+    
     private var pickerView: PickerView?
     private weak var currentTextField: UITextField?
     public weak var textFieldDelegate: UITextFieldDelegate?
 
-    private typealias TextFieldInfo =
-        (textField: UITextField, supportedType: SupportedType)
 
     // MARK:
     
@@ -255,16 +165,16 @@ extension FormView
 {
     private func createTextField(for property: Mirror.Child) -> UITextField?
     {
-        guard let supportedType = SupportedType(property) else { return nil }
+        let value = unwrap(property.value)
+        guard let property = Property(property, self) else { return nil }
 
         let textField = UITextField()
-        let value = unwrap(property.value)
 
         textField.returnKeyType = .next
         textField.borderStyle = .roundedRect
         textField.clearButtonMode = .whileEditing
         
-        if property.label?.lowercased()
+        if property.label.lowercased()
             .contains("password") == true
         {
             textField.clearsOnInsertion = true
@@ -276,9 +186,7 @@ extension FormView
             textField.text = "\(value)"
         }
         
-        if let placeholder = property.label {
-            textField.placeholder = "\(placeholder)"
-        }
+        textField.placeholder = "\(property.label)"
         
         if let value = value,
             Mirror(reflecting: value).isA(.enum)
@@ -289,11 +197,10 @@ extension FormView
         }
 
         textField.textColor = .label
-        textField.keyboardType = supportedType.keyboardType
+        textField.keyboardType = property.keyboardType
         textField.font = .preferredFont(forTextStyle: .body)
 
-        textFields.append((textField: textField,
-                           supportedType: supportedType))
+        textFields.append((textField: textField, property: property))
         return textField
     }
     
@@ -533,8 +440,8 @@ extension FormView: UITextFieldDelegate
     public func textFieldShouldBeginEditing(_ textField: UITextField) -> Bool
     {
         let match = { (info: TextFieldInfo) in info.textField === textField }
-        guard let supportedType = textFields.first(where: match)?.supportedType,
-              case let .enum(type, isOptional: optional) = supportedType else
+        guard let property = textFields.first(where: match)?.property,
+              case let .enum(type) = property.kind else
         {
             if pickerView != nil { stopEditing() }
             return true
@@ -550,8 +457,8 @@ extension FormView: UITextFieldDelegate
         let newPickerView = pickerView == nil
         
         pickerView = pickerView ?? PickerView()
-        pickerView?.components = // add empty value?
-            [(optional ? [""] : []) + type.allValues]
+        pickerView?.components = property.isOptional ?
+            [[""] + type.allValues] : [type.allValues]
         
         pickerView?.currentSelection = textField.text
         pickerView?.selectionChanged = {

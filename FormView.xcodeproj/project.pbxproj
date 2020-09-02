@@ -13,6 +13,7 @@
 		8C13869324E1E3E700BA283F /* FormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C13869224E1E3E700BA283F /* FormView.swift */; };
 		8C13869524E1E47600BA283F /* Utilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C13869424E1E47600BA283F /* Utilities.swift */; };
 		8C6BC16F24F5BBCF00B1547B /* PickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C6BC16E24F5BBCF00B1547B /* PickerView.swift */; };
+		8CC5B5B12500466E00C44877 /* FormProperty.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC5B5B02500466E00C44877 /* FormProperty.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,6 +36,7 @@
 		8C13869224E1E3E700BA283F /* FormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormView.swift; sourceTree = "<group>"; };
 		8C13869424E1E47600BA283F /* Utilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Utilities.swift; sourceTree = "<group>"; };
 		8C6BC16E24F5BBCF00B1547B /* PickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickerView.swift; sourceTree = "<group>"; };
+		8CC5B5B02500466E00C44877 /* FormProperty.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormProperty.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -80,6 +82,7 @@
 				8C13867C24E1E3CD00BA283F /* Info.plist */,
 				8C13867B24E1E3CD00BA283F /* FormView.h */,
 				8C13869224E1E3E700BA283F /* FormView.swift */,
+				8CC5B5B02500466E00C44877 /* FormProperty.swift */,
 				8C6BC16E24F5BBCF00B1547B /* PickerView.swift */,
 				8C13869424E1E47600BA283F /* Utilities.swift */,
 			);
@@ -206,6 +209,7 @@
 			files = (
 				8C13869524E1E47600BA283F /* Utilities.swift in Sources */,
 				8C13869324E1E3E700BA283F /* FormView.swift in Sources */,
+				8CC5B5B12500466E00C44877 /* FormProperty.swift in Sources */,
 				8C6BC16F24F5BBCF00B1547B /* PickerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
