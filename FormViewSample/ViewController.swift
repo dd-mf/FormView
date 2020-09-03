@@ -53,7 +53,7 @@ enum Droid: String,
 
 // MARK: -
 
-struct TestStruct: Assignable
+struct TestStruct
 {
     var id: Int?
     var url: URL?
@@ -69,6 +69,24 @@ struct TestStruct: Assignable
     var something: String?
     var orOther: String?
     var andOneMore: String?
+}
+
+extension TestStruct: Assignable
+{
+    mutating func set<T>(_ key: String, to newValue: T?)
+    {
+        // fully support our enum values
+        switch KeyPaths(stringValue: key)
+        {
+        case .bestDroid:
+            self[key] = newValue as? Droid
+            
+        case .fooBarBaz, ._fooBarBaz:
+            self[key] = newValue as? FooBarBaz
+            
+        default: self[key] = newValue
+        }
+    }
     
     enum KeyPaths: KeyPathMapping
     {
@@ -106,21 +124,6 @@ struct TestStruct: Assignable
             case .orOther:      return \TestStruct.orOther
             case .andOneMore:   return \TestStruct.andOneMore
             }
-        }
-    }
-    
-    mutating func set<T>(_ key: String, to newValue: T?)
-    {
-        // fully support our enum value
-        switch KeyPaths(stringValue: key)
-        {
-        case .bestDroid:
-            self[key] = newValue as? Droid
-            
-        case .fooBarBaz, ._fooBarBaz:
-            self[key] = newValue as? FooBarBaz
-            
-        default: self[key] = newValue
         }
     }
 }
