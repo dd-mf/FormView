@@ -17,6 +17,11 @@ extension UIView
         let root = superview.root
         return root == nil ? superview : root
     }
+    
+    func removeAllSubviews()
+    {
+        subviews.forEach { $0.removeFromSuperview() }
+    }
 }
 
 func execute<T>(_ action: () -> T) -> T { return action() }

@@ -140,8 +140,7 @@ class ViewController: UIViewController
         
         title = "FormView"
         view.addSubview(form)
-
-        form.addTextFields(for: TestStruct())
+        form.populate(for: TestStruct())
 
         navigationItem.rightBarButtonItem =
             UIBarButtonItem(barButtonSystemItem: .save,

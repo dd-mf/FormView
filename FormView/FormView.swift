@@ -254,12 +254,16 @@ extension FormView
         }
     }
     
-    public func addTextFields<T>(for template: T,
-                                 editable: Bool = true,
-                                 labels: LabelStyle = .default,
-                                 customize: ((UIView)->())? = nil )
+    public func populate<T>(for template: T,
+                            editable: Bool = true,
+                            labels: LabelStyle = .default,
+                            customize: ((UIView)->())? = nil )
     {
+        stopEditing()
         data = template
+        textFields.removeAll()
+        stack.removeAllSubviews()
+        
         var labelWidth: CGFloat = 0
         let toolbar = createToolbar()
 
