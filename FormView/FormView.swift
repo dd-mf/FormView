@@ -61,6 +61,14 @@ public class FormView: UIScrollView
     
     deinit { NotificationCenter.default.removeObserver(self) }
     
+    private func set<T>(_ property: Property, to value: T?)
+    {
+        if var data = data as? _Assignable
+        {
+            self.data = data.set(property, to: value)
+        }
+    }
+    
     override init(frame: CGRect)
     {
         super.init(frame: frame)
@@ -167,15 +175,8 @@ extension FormView
                 pickerView.currentSelection = textField.text
                 pickerView.selectionChanged = {
                     [weak self, weak textField] (picker, _) in
-                    guard let self = self else { return }
-                    
                     textField?.text = picker.currentSelection as? String
-                    
-                    if var data = self.data as? _Assignable
-                    {
-                        let newValue = property.convert(textField?.text)
-                        self.data = data.set(property, to: newValue)
-                    }
+                    self?.set(property, to: property.convert(textField?.text))
                 }
 
                 return pickerView
@@ -410,7 +411,7 @@ extension FormView: UITextFieldDelegate
     {
         let previousPicker = pickerView
 
-        guard let root = root,
+        guard let root = root, // does this textField need a picker?
               let createPicker = pickerCreator(for: textField)
         else { if previousPicker != nil { stopEditing() }; return true }
         
@@ -470,11 +471,9 @@ extension FormView: UITextFieldDelegate
     
     public func textFieldShouldClear(_ textField: UITextField ) -> Bool
     {
-        if var data = self.data as? _Assignable,
-           let property = property(for: textField)
+        if let property = property(for: textField)
         {
-            let newValue = property.convert("")
-            self.data = data.set(property, to: newValue)
+            set(property, to: property.convert(""))
         }
         return true
     }
@@ -502,11 +501,9 @@ extension FormView: UITextFieldDelegate
                 textField.text = original
                     .replacingCharacters(in: range, with: string)
             }
-            if var data = self.data as? _Assignable,
-               let property = self.property(for: textField)
+            if let property = self.property(for: textField)
             {
-                let newValue = property.convert(textField.text)
-                self.data = data.set(property, to: newValue)
+                self.set(property, to: property.convert(textField.text))
             }
             return false
         }
