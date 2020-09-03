@@ -55,12 +55,13 @@ enum Droid: String,
 
 struct TestStruct
 {
-    var id: Int?
+    var int: Int?
     var url: URL?
     var name = ""
+    var date: Date?
     var email: String?
-    var value: Decimal?
     var phone: String?
+    var value: Decimal?
     var password: String?
     var bestDroid: Droid = .R2D2
     var fooBarBaz: FooBarBaz = .foo
@@ -90,9 +91,10 @@ extension TestStruct: Assignable
     
     enum KeyPaths: KeyPathMapping
     {
-        case id
+        case int
         case url
         case name
+        case date
         case email
         case value
         case phone
@@ -109,9 +111,10 @@ extension TestStruct: Assignable
         {
             switch self
             {
-            case .id:           return \TestStruct.id
+            case .int:          return \TestStruct.int
             case .url:          return \TestStruct.url
             case .name:         return \TestStruct.name
+            case .date:         return \TestStruct.date
             case .email:        return \TestStruct.email
             case .value:        return \TestStruct.value
             case .phone:        return \TestStruct.phone

@@ -174,6 +174,7 @@ public extension Assignable
 
 public protocol _Assignable
 {
+    subscript(_ key: String) -> Any? { get }
     subscript<T>(_ key: String) -> T? { get set }
     mutating func set<T>(_ key: String, to newValue: T?)
 }
@@ -209,6 +210,18 @@ public protocol KeyPathMapping: CodingKey
 extension KeyPathMapping
 {
     static func keyPath(for key: String) -> AnyKeyPath? { Self(stringValue: key)?.keyPath }
+}
+
+// MARK: -
+
+public extension UIControl
+{
+    typealias Target = (Any?, Selector)
+
+    func addTarget(_ target: Target, for controlEvents: UIControl.Event)
+    {
+        addTarget(target.0, action: target.1, for: controlEvents)
+    }
 }
 
 // MARK: -

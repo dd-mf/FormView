@@ -19,6 +19,20 @@ fileprivate extension TimeInterval
 
 // MARK: -
 
+public protocol FormViewDelegate: UIScrollViewDelegate, UITextFieldDelegate
+{
+    func dateFormat(for key: String?) -> UIDatePicker.Format
+    func dateConfiguration(for key: String?) -> UIDatePicker.Config
+}
+
+extension FormViewDelegate
+{
+    func dateFormat(for key: String?) -> UIDatePicker.Format { UIDatePicker.Format() }
+    func dateConfiguration(for key: String?) -> UIDatePicker.Config { UIDatePicker.Config() }
+}
+
+// MARK: -
+
 public class FormView: UIScrollView
 {
     public private(set) var data: Any?
@@ -52,10 +66,16 @@ public class FormView: UIScrollView
     private typealias TextFieldInfo =
         (textField: UITextField, property: Property)
     
-    private var pickerView: PickerView?
+    private var pickerView: (forDate: UIDatePicker?,
+                             forString: PickerView?)
+    {
+        didSet { assert(pickerView.forDate == nil ||
+                            pickerView.forString == nil) }
+    }
+    
     private weak var currentTextField: UITextField?
-    public weak var textFieldDelegate: UITextFieldDelegate?
 
+    var formViewDelegate: FormViewDelegate? { delegate as? FormViewDelegate }
 
     // MARK:
     
@@ -165,8 +185,8 @@ extension FormView
         {
         case let .enum(type):
             return {
-                let pickerView = self.pickerView ?? PickerView()
-                defer { self.pickerView = pickerView }
+                let pickerView = self.pickerView.forString ?? PickerView()
+                defer { self.pickerView = (forDate: nil, forString: pickerView) }
 
                 // add an empty entry if property is optional
                 pickerView.components = property.isOptional ?
@@ -182,6 +202,35 @@ extension FormView
                 return pickerView
             }
             
+        case .date(let config, let formatter): return {
+            defer { // force textField.text to be updated upon exit
+                self.currentTextField = textField; self.datePickerChanged()
+            }
+            
+            let datePicker = self.pickerView.forDate ?? UIDatePicker()
+            defer { self.pickerView = (forDate: datePicker, forString: nil) }
+
+            datePicker.locale = formatter.locale
+            datePicker.calendar = formatter.calendar
+            datePicker.timeZone = formatter.timeZone
+            datePicker.minimumDate = config.minimumDate
+            datePicker.maximumDate = config.maximumDate
+            datePicker.minuteInterval = config.minuteInterval
+            datePicker.datePickerMode = config.mode.datePickerMode
+
+            datePicker.date =
+                (self.data as? _Assignable)?[property.label] as? Date ??
+                property.convert(textField.text) as? Date ?? Date()
+
+            if #available(iOS 13.4, *) {
+                datePicker.preferredDatePickerStyle = config.preferredStyle
+            }
+
+            datePicker.addTarget((self, #selector(
+                                    self.datePickerChanged)), for: .valueChanged)
+            return datePicker
+        }
+        
         default: return nil
         }
     }
@@ -344,17 +393,18 @@ extension FormView
             defer { currentTextField = nil }
             currentTextField?.textColor = .label
 
-            assert(pickerView != nil)
-            assert(pickerView?.superview != nil)
-            
-            guard let container = pickerView?.superview else { return }
-            
+            assert(pickerView.forDate ?? pickerView.forString != nil)
+            assert((pickerView.forDate ?? pickerView.forString)?.superview != nil)
+
+            guard let container = (pickerView.forDate ??
+                                    pickerView.forString)?.superview else { return }
+
             UIView.animate(withDuration: .animationDuration) {
                 container.frame = container.frame.offsetBy(dx: 0, dy: container.frame.height)
             }
             completion: { _ in
-                self.pickerView = nil
                 container.removeFromSuperview()
+                self.pickerView = (forDate: nil, forString: nil)
 
                 NotificationCenter.default.post(
                     name: UIResponder.keyboardWillHideNotification, object: nil,
@@ -392,6 +442,20 @@ extension FormView
         }
     }
     
+    @objc private func datePickerChanged()
+    {
+        if let date = pickerView.forDate?.date,
+           let currentTextField = currentTextField,
+           let property = property(for: currentTextField)
+        {
+            if let dateString = property.string(from: date)
+            {
+                set(property, to: date)
+                currentTextField.text = dateString
+            }
+        }
+    }
+    
     @objc public func advanceToNextTextField() { advanceTextField(forward: true) }
     @objc public func advanceToPrevTextField() { advanceTextField(forward: false) }
 
@@ -413,7 +477,7 @@ extension FormView: UITextFieldDelegate
 {
     public func textFieldShouldBeginEditing(_ textField: UITextField) -> Bool
     {
-        let previousPicker = pickerView
+        let previousPicker = pickerView.forDate ?? pickerView.forString
 
         guard let root = root, // does this textField need a picker?
               let createPicker = pickerCreator(for: textField)

@@ -20,6 +20,7 @@ extension FormView
             case int, decimal
             case string(UIKeyboardType)
             case `enum`(Enumerable.Type)
+            case date(UIDatePicker.Config, DateFormatter)
         }
         
         init?(_ property: Mirror.Child, _ formView: FormView? = nil)
@@ -49,6 +50,16 @@ extension FormView
                 
                 kind = .string(keyboardType)
             }
+            else if type(of: value, is: Date.self)
+            {
+                let delegate = formView?.formViewDelegate
+                let format = delegate?.dateFormat(
+                    for: property.label) ?? UIDatePicker.Format()
+                let config = delegate?.dateConfiguration(
+                    for: property.label) ?? UIDatePicker.Config()
+
+                kind = .date(config, DateFormatter(format))
+            }
             else if type(of: value, is: Int.self) { kind = .int }
             else if type(of: value, is: Decimal.self) { kind = .decimal }
             else if type(of: value, is: URL.self) { kind = .string(.URL) }
@@ -65,11 +76,11 @@ extension FormView
                 switch kind
                 {
                 case .int: return Int(rawValue)
+                case .date: return self.date(from: rawValue)
                 case .decimal: return Decimal(string: rawValue)
                 case .string(.URL): return URL(string: rawValue)
-                    
                 case .enum(let type): return type.init(rawValue: rawValue)
-                    
+
                 case .string(let keyboard):
                     guard keyboard == .phonePad else { return rawValue }
                     let nonDigits = CharacterSet.decimalDigits.inverted
@@ -83,8 +94,8 @@ extension FormView
             switch kind
             {
             case .int: return .numberPad
-            case .enum(_): return .default
             case .decimal: return .decimalPad
+            case .date, .enum: return .default
             case .string(let keyboardType): return keyboardType
             }
         }
@@ -93,11 +104,27 @@ extension FormView
 
 // MARK: -
 
-extension _Assignable
+extension FormView.Property
+{
+    internal func date(from string: String?) -> Date?
+    {
+        guard case let .date(_, formatter) = kind else { return nil }
+        return formatter.date(from: string ?? "") ?? Date()
+    }
+    
+    internal func string(from date: Date) -> String?
+    {
+        guard case let .date(_, formatter) = kind else { return nil }
+        return formatter.string(from: date)
+    }
+}
+
+// MARK: -
+
+internal extension _Assignable
 {
     typealias Property = FormView.Property
     
-    @discardableResult
     mutating func set(_ property: Property, to value: Any?) -> Self
     {
         func set<T>(as type: T.Type) -> Self
@@ -107,10 +134,11 @@ extension _Assignable
         
         switch property.kind
         {
-        case .enum(_):      return set(as: Any.self)
         case .string(.URL): return set(as: URL.self)
             
         case .int:          return set(as: Int.self)
+        case .enum:         return set(as: Any.self)
+        case .date:         return set(as: Date.self)
         case .decimal:      return set(as: Decimal.self)
         
         default:            return set(as: String.self)
