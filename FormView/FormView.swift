@@ -94,13 +94,95 @@ public class FormView: UIScrollView
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
 
-// MARK: -
+// MARK: - Configuration
 
 extension FormView
 {
+    private func embed(_ view: UIView, in container: UIView)
+    {
+        guard let root = root else { return }
+        
+        root.addSubview(container)
+        let toolbar = createToolbar()
+        
+        toolbar.items = execute
+        {
+            let space = { UIBarButtonItem.fixedSpace(20) }
+            return [space()] + (toolbar.items ?? []) + [space()]
+        }
+
+        [toolbar, view].forEach {
+            container.addSubview($0)
+            $0.translatesAutoresizingMaskIntoConstraints = false
+        }
+
+        container.frame = root.bounds
+        container.frame.origin.y = root.bounds.height
+        container.frame.size.height = view.frame.height +
+            toolbar.frame.height + root.safeAreaInsets.bottom
+        
+        container.layer.borderWidth = 0.5
+        container.backgroundColor = .secondarySystemBackground
+        container.layer.borderColor = UIColor.opaqueSeparator.cgColor
+
+        ["H:|[toolbar]|", "H:|[picker]|", "V:|[toolbar][picker]"].forEach
+        {
+            root.addConstraints(
+                NSLayoutConstraint.constraints(withVisualFormat: $0, metrics: nil,
+                                               views: ["toolbar": toolbar, "picker": view]))
+        }
+        
+        container.addConstraints([NSLayoutConstraint(
+                                    item: toolbar,
+                                    attribute: .height, relatedBy: .equal,
+                                    toItem: nil, attribute: .notAnAttribute,
+                                    multiplier: 1, constant: toolbar.frame.height),
+                                  NSLayoutConstraint(
+                                    item: view,
+                                    attribute: .height, relatedBy: .equal,
+                                    toItem: nil, attribute: .notAnAttribute,
+                                    multiplier: 1, constant: view.frame.height)])
+    }
+
     private func property(for textField: UITextField) -> Property?
     {
         textFields.first(where: { $0.textField === textField })?.property
+    }
+    
+    private func pickerCreator(for textField: UITextField) -> (() -> (UIView?))?
+    {
+        guard let property = property(for: textField) else { return nil }
+        
+        switch property.kind
+        {
+        case let .enum(type):
+            return {
+                let pickerView = self.pickerView ?? PickerView()
+                defer { self.pickerView = pickerView }
+
+                // add an empty entry if property is optional
+                pickerView.components = property.isOptional ?
+                    [[""] + type.allValues] : [type.allValues]
+                
+                pickerView.currentSelection = textField.text
+                pickerView.selectionChanged = {
+                    [weak self, weak textField] (picker, _) in
+                    guard let self = self else { return }
+                    
+                    textField?.text = picker.currentSelection as? String
+                    
+                    if var data = self.data as? _Assignable
+                    {
+                        let newValue = property.convert(textField?.text)
+                        self.data = data.set(property, to: newValue)
+                    }
+                }
+
+                return pickerView
+            }
+            
+        default: return nil
+        }
     }
     
     private func createTextField(for property: Mirror.Child) -> UITextField?
@@ -246,7 +328,7 @@ extension FormView
     }
 }
 
-// MARK: -
+// MARK: - Event Handling
 
 extension FormView
 {
@@ -254,9 +336,9 @@ extension FormView
     {
         if currentTextField?.resignFirstResponder() == false
         {
+            defer { currentTextField = nil }
             currentTextField?.textColor = .label
 
-            currentTextField = nil
             assert(pickerView != nil)
             assert(pickerView?.superview != nil)
             
@@ -268,6 +350,7 @@ extension FormView
             completion: { _ in
                 self.pickerView = nil
                 container.removeFromSuperview()
+
                 NotificationCenter.default.post(
                     name: UIResponder.keyboardWillHideNotification, object: nil,
                     userInfo: [UIResponder.keyboardFrameEndUserInfoKey: NSValue(cgRect: container.frame)])
@@ -317,60 +400,6 @@ extension FormView
             textFields[nextIndex % textFields.count].textField.becomeFirstResponder()
         }
     }
-    
-    private func configurePickerView(in container: UIView, new newPickerView: Bool)
-    {
-        guard let root = root,
-              let pickerView = pickerView else { return }
-        
-        let toolbar = createToolbar()
-        toolbar.items = execute
-        {
-            let space = { UIBarButtonItem.fixedSpace(20) }
-            return [space()] + (toolbar.items ?? []) + [space()]
-        }
-
-        root.addSubview(container)
-        
-        container.layer.borderWidth = 0.5
-        container.backgroundColor = .secondarySystemBackground
-        container.layer.borderColor = UIColor.opaqueSeparator.cgColor
-        
-        [toolbar, pickerView].forEach {
-            container.addSubview($0)
-            $0.translatesAutoresizingMaskIntoConstraints = false
-        }
-        
-        container.frame = root.bounds
-        container.frame.origin.y = root.bounds.height
-        container.frame.size.height = pickerView.frame.height +
-            toolbar.frame.height + root.safeAreaInsets.bottom
-        
-        if !newPickerView
-        {
-            container.frame = container.frame
-                .offsetBy(dx: 0, dy: -container.frame.height)
-        }
-        
-        ["H:|[toolbar]|", "H:|[pickerView]|", "V:|[toolbar][pickerView]"].forEach
-        {
-            root.addConstraints(
-                NSLayoutConstraint.constraints(withVisualFormat: $0, metrics: nil,
-                                               views: ["toolbar": toolbar,
-                                                       "pickerView": pickerView]))
-        }
-        
-        container.addConstraints([NSLayoutConstraint(
-                                    item: toolbar,
-                                    attribute: .height, relatedBy: .equal,
-                                    toItem: nil, attribute: .notAnAttribute,
-                                    multiplier: 1, constant: toolbar.frame.height),
-                                  NSLayoutConstraint(
-                                    item: pickerView,
-                                    attribute: .height, relatedBy: .equal,
-                                    toItem: nil, attribute: .notAnAttribute,
-                                    multiplier: 1, constant: pickerView.frame.height)])
-    }
 }
 
 // MARK: - UITextFieldDelegate
@@ -379,50 +408,32 @@ extension FormView: UITextFieldDelegate
 {
     public func textFieldShouldBeginEditing(_ textField: UITextField) -> Bool
     {
-        let match = { (info: TextFieldInfo) in info.textField === textField }
-        guard let property = textFields.first(where: match)?.property,
-              case let .enum(type) = property.kind else
-        {
-            if pickerView != nil { stopEditing() }
-            return true
-        }
+        let previousPicker = pickerView
+
+        guard let root = root,
+              let createPicker = pickerCreator(for: textField)
+        else { if previousPicker != nil { stopEditing() }; return true }
         
-        guard pickerView != nil || currentTextField?
+        guard previousPicker != nil || currentTextField?
                 .resignFirstResponder() ?? true else { return true }
         
-        textField.textColor = .systemBlue
         currentTextField?.textColor = .label
-        
+
+        guard let currentPicker = createPicker() else { return true }
+
         currentTextField = textField
-        let newPickerView = pickerView == nil
+        currentTextField?.textColor = .systemBlue
         
-        pickerView = pickerView ?? PickerView()
-        pickerView?.components = property.isOptional ?
-            [[""] + type.allValues] : [type.allValues]
-        
-        pickerView?.currentSelection = textField.text
-        pickerView?.selectionChanged = {
-            [weak self, weak textField] (picker, _) in
-            guard let self = self else { return }
-            
-            textField?.text = picker.currentSelection as? String
-            
-            if var data = self.data as? _Assignable
-            {
-                let newValue = property.convert(textField?.text)
-                self.data = data.set(property, to: newValue)
-            }
-        }
-        
-        let container = pickerView?.superview ?? UIView()
-        guard let root = root, let _ = self.pickerView else { return true }
+        let newPicker = currentPicker != previousPicker
+        let container = previousPicker?.superview ?? UIView()
 
-        if newPickerView
+        if newPicker
         {
-            configurePickerView(in: container, new: newPickerView)
+            embed(currentPicker, in: container)
+            previousPicker?.removeFromSuperview()
         }
 
-        UIView.animate(withDuration: newPickerView ? .animationDuration : 0)
+        UIView.animate(withDuration: newPicker ? .animationDuration : 0)
         {
             container.frame.origin.y = root.bounds.maxY - container.frame.height
         }
