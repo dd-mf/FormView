@@ -21,19 +21,7 @@ fileprivate extension TimeInterval
 
 public class FormView: UIScrollView
 {
-    public var data: Any?
-    {
-        if isDirty
-        {   // update
-            _ = values
-        }
-        return _data
-    }
-    private var _data: Any?
-    {
-        didSet { isDirty = false }
-    }
-    private var isDirty = false
+    public private(set) var data: Any?
 
     private let stack: UIStackView = execute
     {
@@ -49,67 +37,14 @@ public class FormView: UIScrollView
     
     public var values: [String: Any]?
     {
-        guard let data = _data else { return nil }
-        
-        guard isDirty else
-        {   // pull values from data
-            var values = [String: Any]()
-            Mirror(reflecting: data).children.forEach
-            {
-                if let label = $0.label,
-                   let _ = Property($0)
-                {
-                    values[label] = unwrap($0.value)
-                }
-            }
-            
-            return values
-        }
-        
-        // create dictionary of mirror children
-        let properties = Mirror(reflecting: data)
-            .children.reduce([String: Any]())
-            {
-                guard let label = $1.label else { return $0 }
-                return $0.merging([label: $1.value]) { (_, new) in new }
-            }
-        
-        var updatedData = data as? _Assignable // copy on exit
-        defer { if let newData = updatedData { _data = newData } }
-        
-        // pull rawValues from textFields
+        guard let data = data else { return nil }
         return textFields.reduce([String: Any]())
         {
-            let textField = $1.textField
-            let supportedType = $1.property
-            guard let propertyName = textField.placeholder,
-                  let rawValue = textField.text else { return $0 }
-            
-            let newValue: Any? = execute
-            {
-                let newValue = supportedType.convert(rawValue)
-                guard let propertyValue =
-                        properties[propertyName] else { return newValue }
-                
-                let mirror = Mirror(reflecting: propertyValue)
-                return !rawValue.isEmpty || !mirror.isA(.optional) ? newValue : nil
-            }
-            
-            updatedData = supportedType.setter(for: propertyName,
-                                               on: &updatedData)(newValue as Any)
-            let finalValue: Any?
-            if updatedData == nil
-            {
-                finalValue = newValue as Any
-            }
-            else
-            {   // copy values back from updatedData to handle non-optionals
-                finalValue = ifLet(updatedData?[propertyName]) { $0 }
-                textField.text = ifLet(unwrap(finalValue as Any)) { "\($0)" }
-            }
-
-            guard finalValue != nil else { return $0 }
-            return $0.merging([propertyName: finalValue!]) { (_, new) in new }
+            let property = $1.property
+            guard let value = (data as? _Assignable)?[property.label] ??
+                    property.convert($1.textField.text) else { return $0 }
+            guard let unwrappedValue = unwrap(value) else { return $0 }
+            return $0.merging([property.label: unwrappedValue]) { (_, new) in new }
         }
     }
 
@@ -163,6 +98,11 @@ public class FormView: UIScrollView
 
 extension FormView
 {
+    private func property(for textField: UITextField) -> Property?
+    {
+        textFields.first(where: { $0.textField === textField })?.property
+    }
+    
     private func createTextField(for property: Mirror.Child) -> UITextField?
     {
         let value = unwrap(property.value)
@@ -236,7 +176,7 @@ extension FormView
                                  labels: LabelStyle = .default,
                                  customize: ((UIView)->())? = nil )
     {
-        _data = template
+        data = template
         var labelWidth: CGFloat = 0
         let toolbar = createToolbar()
 
@@ -462,9 +402,16 @@ extension FormView: UITextFieldDelegate
         
         pickerView?.currentSelection = textField.text
         pickerView?.selectionChanged = {
-            [weak self, weak textField] (pickerView, _) in
-            self?.isDirty = true
-            textField?.text = pickerView.currentSelection as? String
+            [weak self, weak textField] (picker, _) in
+            guard let self = self else { return }
+            
+            textField?.text = picker.currentSelection as? String
+            
+            if var data = self.data as? _Assignable
+            {
+                let newValue = property.convert(textField?.text)
+                self.data = data.set(property, to: newValue)
+            }
         }
         
         let container = pickerView?.superview ?? UIView()
@@ -510,7 +457,16 @@ extension FormView: UITextFieldDelegate
 
     public func textFieldDidEndEditing(_: UITextField) { currentTextField = nil }
     
-    public func textFieldShouldClear(_: UITextField ) -> Bool { isDirty = true; return true }
+    public func textFieldShouldClear(_ textField: UITextField ) -> Bool
+    {
+        if var data = self.data as? _Assignable,
+           let property = property(for: textField)
+        {
+            let newValue = property.convert("")
+            self.data = data.set(property, to: newValue)
+        }
+        return true
+    }
     
     public func textFieldShouldReturn(_ textField: UITextField) -> Bool
     {
@@ -528,7 +484,21 @@ extension FormView: UITextFieldDelegate
     {
         var validCharacters: CharacterSet
         let oneTimeCharacter: CharacterSet
-        let markDirty: (Bool) -> (Bool) = { self.isDirty = self.isDirty || $0; return $0 }
+        let update: (Bool) -> (Bool) = {
+            if $0, let original = textField.text,
+               let range = Range(range, in: original)
+            {
+                textField.text = original
+                    .replacingCharacters(in: range, with: string)
+            }
+            if var data = self.data as? _Assignable,
+               let property = self.property(for: textField)
+            {
+                let newValue = property.convert(textField.text)
+                self.data = data.set(property, to: newValue)
+            }
+            return false
+        }
         
         func incomingStringOnlyContains(_ characters: [CharacterSet]) -> Bool
         {
@@ -551,7 +521,7 @@ extension FormView: UITextFieldDelegate
                 charactersIn: Locale.current.decimalSeparator ?? ".")
 
         case .URL:
-            return markDirty(incomingStringOnlyContains([.urlUserAllowed,
+            return update(incomingStringOnlyContains([.urlUserAllowed,
                                                          .urlHostAllowed,
                                                          .urlPathAllowed,
                                                          .urlQueryAllowed,
@@ -559,14 +529,14 @@ extension FormView: UITextFieldDelegate
                                                          .urlPasswordAllowed]))
             
         case .asciiCapable, .numbersAndPunctuation:
-            return markDirty(incomingStringOnlyContains([.alphanumerics,
+            return update(incomingStringOnlyContains([.alphanumerics,
                                                          .punctuationCharacters]))
             
         case .asciiCapableNumberPad, .numberPad:
-            return markDirty(incomingStringOnlyContains([.decimalDigits]))
+            return update(incomingStringOnlyContains([.decimalDigits]))
 
         case .phonePad:
-            guard incomingStringOnlyContains([.decimalDigits]) else { return markDirty(false) }
+            guard incomingStringOnlyContains([.decimalDigits]) else { return update(false) }
             if let originalText = textField.text, let range = Range(range, in: originalText)
             {
                 let text = originalText.replacingCharacters(in: range, with: string)
@@ -583,12 +553,12 @@ extension FormView: UITextFieldDelegate
                 default: break
                 }
                 
-                _ = markDirty(originalText != textField.text)
+                _ = update(originalText != textField.text)
             }
             
             return false
             
-        default: return markDirty(true) // anything goes
+        default: return update(true) // anything goes
         }
         
         // check for incoming validCharacters and oneTimeCharacter
@@ -608,6 +578,6 @@ extension FormView: UITextFieldDelegate
                     (numIncomingOneTimeCharacter <= 1) : (numIncomingOneTimeCharacter == 0) else { return false }
         }
         
-        return markDirty(string.rangeOfCharacter(from: validCharacters.inverted) == nil)
+        return update(string.rangeOfCharacter(from: validCharacters.inverted) == nil)
     }
 }

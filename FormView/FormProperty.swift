@@ -77,28 +77,7 @@ extension FormView
                 }
             }
         }
-        
-        func setter(for key: String, on target: inout _Assignable?) -> (Any) -> (_Assignable?)
-        {
-            guard var target = target else { return { _ in nil} }
-            
-            func set<T>(as type: T.Type) -> (Any) -> (_Assignable?)
-            {
-                return { target.set(key, to: $0 as? T); return target }
-            }
-            
-            switch kind
-            {
-            case .enum(_):      return set(as: Any.self)
-            case .string(.URL): return set(as: URL.self)
                 
-            case .int:          return set(as: Int.self)
-            case .decimal:      return set(as: Decimal.self)
-            
-            default:            return set(as: String.self)
-            }
-        }
-        
         var keyboardType: UIKeyboardType
         {
             switch kind
@@ -108,6 +87,33 @@ extension FormView
             case .decimal: return .decimalPad
             case .string(let keyboardType): return keyboardType
             }
+        }
+    }
+}
+
+// MARK: -
+
+extension _Assignable
+{
+    typealias Property = FormView.Property
+    
+    @discardableResult
+    mutating func set(_ property: Property, to value: Any?) -> Self
+    {
+        func set<T>(as type: T.Type) -> Self
+        {
+            self.set(property.label, to: value as? T); return self
+        }
+        
+        switch property.kind
+        {
+        case .enum(_):      return set(as: Any.self)
+        case .string(.URL): return set(as: URL.self)
+            
+        case .int:          return set(as: Int.self)
+        case .decimal:      return set(as: Decimal.self)
+        
+        default:            return set(as: String.self)
         }
     }
 }
