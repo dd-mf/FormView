@@ -562,6 +562,7 @@ extension FormView: UITextFieldDelegate
     {
         var validCharacters: CharacterSet
         let oneTimeCharacter: CharacterSet
+        
         let update: (Bool) -> (Bool) = {
             if $0, let original = textField.text,
                let range = Range(range, in: original)
@@ -576,25 +577,22 @@ extension FormView: UITextFieldDelegate
             return false
         }
         
-        func incomingStringOnlyContains(_ characters: [CharacterSet]) -> Bool
-        {
-            var validCharacters = CharacterSet()
-            characters.forEach { validCharacters.formUnion($0) }
+        let incomingStringOnlyContains: ([CharacterSet]) -> Bool = {
+            let validCharacters = $0.reduce(CharacterSet()) { $0.union($1) }
             return string.rangeOfCharacter(from: validCharacters.inverted) == nil
         }
         
         switch textField.keyboardType
         {
         case .emailAddress:
-            validCharacters = .alphanumerics
-            validCharacters.formUnion(
-                CharacterSet(charactersIn: ".-"))
+            validCharacters = CharacterSet.alphanumerics
+                .union(CharacterSet(charactersIn: ".-"))
             oneTimeCharacter = CharacterSet(charactersIn: "@")
             
         case .decimalPad:
             validCharacters = .decimalDigits
-            oneTimeCharacter = CharacterSet(
-                charactersIn: Locale.current.decimalSeparator ?? ".")
+            oneTimeCharacter = CharacterSet(charactersIn: Locale.current
+                                                .decimalSeparator ?? ".")
 
         case .URL:
             return update(incomingStringOnlyContains([.urlUserAllowed,
@@ -618,12 +616,9 @@ extension FormView: UITextFieldDelegate
                 let modifiedText = originalText.replacingCharacters(in: range, with: string)
                     .components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
                 
-                if let formattedNumber = Locale.current.formattedPhoneNumber(modifiedText)
-                {
-                    textField.text = formattedNumber
-                    
-                    _ = update(false)
-                }
+                textField.text = Locale.current.formattedPhoneNumber(modifiedText)
+                
+                if originalText != textField.text { _ = update(false) }
             }
             
             return false

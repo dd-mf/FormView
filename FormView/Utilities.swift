@@ -139,7 +139,7 @@ extension String
 
 extension Locale
 {
-    public var formattedPhoneNumber: (String) -> (String?)
+    public var formattedPhoneNumber: (String) -> (String)
     {
         switch regionCode
         {
@@ -149,10 +149,8 @@ extension Locale
             case 0...4: return $0
             case 5...7: return $0[0...2] + "-" + $0[3...6]
                 
-            case 8...10: return
+            default: return
                 "(" + $0[0...2] + ") " + $0[3...5] + "-" + $0[6...9]
-                
-            default: return nil
             }
         }
         
