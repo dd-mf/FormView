@@ -615,21 +615,15 @@ extension FormView: UITextFieldDelegate
             guard incomingStringOnlyContains([.decimalDigits]) else { return update(false) }
             if let originalText = textField.text, let range = Range(range, in: originalText)
             {
-                let text = originalText.replacingCharacters(in: range, with: string)
+                let modifiedText = originalText.replacingCharacters(in: range, with: string)
                     .components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
                 
-                switch text.count
-                {                                                       
-                case 0...4: textField.text = text
-                case 5...7: textField.text = text[0...2] + "-" + text[3...6]
+                if let formattedNumber = Locale.current.formattedPhoneNumber(modifiedText)
+                {
+                    textField.text = formattedNumber
                     
-                case 8...10: textField.text =
-                    "(" + text[0...2] + ") " + text[3...5] + "-" + text[6...9]
-                    
-                default: break
+                    _ = update(false)
                 }
-                
-                _ = update(originalText != textField.text)
             }
             
             return false
