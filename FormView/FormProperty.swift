@@ -20,7 +20,7 @@ extension FormView
             case int, decimal
             case string(UIKeyboardType)
             case `enum`(Enumerable.Type)
-            case date(UIDatePicker.Config, DateFormatter)
+            case date(DatePicker.Config, DateFormatter)
         }
         
         init?(_ property: Mirror.Child, _ formView: FormView? = nil)
@@ -54,9 +54,9 @@ extension FormView
             {
                 let delegate = formView?.formViewDelegate
                 let format = delegate?.dateFormat(
-                    for: property.label) ?? UIDatePicker.Format()
+                    for: property.label) ?? DatePicker.Format()
                 let config = delegate?.dateConfiguration(
-                    for: property.label) ?? UIDatePicker.Config()
+                    for: property.label) ?? DatePicker.Config()
 
                 kind = .date(config, DateFormatter(format))
             }

@@ -21,14 +21,14 @@ fileprivate extension TimeInterval
 
 public protocol FormViewDelegate: UIScrollViewDelegate, UITextFieldDelegate
 {
-    func dateFormat(for key: String?) -> UIDatePicker.Format
-    func dateConfiguration(for key: String?) -> UIDatePicker.Config
+    func dateFormat(for key: String?) -> DatePicker.Format
+    func dateConfiguration(for key: String?) -> DatePicker.Config
 }
 
 extension FormViewDelegate
 {
-    func dateFormat(for key: String?) -> UIDatePicker.Format { UIDatePicker.Format() }
-    func dateConfiguration(for key: String?) -> UIDatePicker.Config { UIDatePicker.Config() }
+    func dateFormat(for key: String?) -> DatePicker.Format { DatePicker.Format() }
+    func dateConfiguration(for key: String?) -> DatePicker.Config { DatePicker.Config() }
 }
 
 // MARK: -

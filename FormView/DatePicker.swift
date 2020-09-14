@@ -7,9 +7,9 @@
 
 import UIKit
 
-public extension UIDatePicker
+public class DatePicker: UIPickerView
 {
-    struct Format
+    public struct Format
     {
         var format = "E MMM d, h:mm a"
         var locale: Locale = .current
@@ -17,7 +17,7 @@ public extension UIDatePicker
         var timeZone: TimeZone = .current
     }
     
-    struct Config
+    public struct Config
     {
         var mode: Mode = .dateAndTime
 
@@ -44,11 +44,12 @@ public extension UIDatePicker
         }
     }
 }
+
 // MARK: -
 
 extension DateFormatter
 {
-    convenience init(_ format: UIDatePicker.Format)
+    convenience init(_ format: DatePicker.Format)
     {
         self.init()
         locale = format.locale
