@@ -295,8 +295,9 @@ extension FormView
 
     public enum LabelStyle
     {
-        case none, `default`, centerAligned, leftAligned
-        
+        case none, `default`
+        case above, centerAligned, leftAligned
+
         fileprivate var style: LabelStyle
         {
             (self == .default) ? .centerAligned : self
@@ -334,12 +335,19 @@ extension FormView
                 let row = UIStackView()
                 stack.addArrangedSubview(row)
 
-                row.spacing = 8
-                row.axis = .horizontal
-                row.alignment = .center
+                switch labels.style
+                {
+                case .above:
+                    row.axis = .vertical
+                default:
+                    row.axis = .horizontal
+                    row.alignment = .center
+                }
+                
                 row.distribution = .fill
+                row.spacing = .stackSpacing
                 row.contentMode = .scaleToFill
-
+                
                 let label = UILabel()
                 label.text = property.label?.appending(":")
 
