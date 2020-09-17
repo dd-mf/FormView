@@ -269,6 +269,7 @@ extension FormView
 
         textField.textColor = .label
         textField.keyboardType = property.keyboardType
+        textField.textContentType = property.textContentType
         textField.font = .preferredFont(forTextStyle: .body)
 
         textFields.append((textField: textField, property: property))

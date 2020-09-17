@@ -105,6 +105,20 @@ extension FormView
             case .string(let keyboardType): return keyboardType
             }
         }
+        
+        var textContentType: UITextContentType?
+        {
+            switch keyboardType
+            {
+            case .URL: return .URL
+            case .phonePad: return .telephoneNumber
+            case .emailAddress: return .emailAddress
+
+            default:
+                return isPassword ? .password :
+                    UITextContentType(rawValue: label)
+            }
+        }
     }
 }
 
