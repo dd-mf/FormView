@@ -242,6 +242,11 @@ extension FormView
 
         let textField = UITextField()
 
+        if let value = value
+        {
+            textField.text = "\(value)"
+        }
+        
         textField.returnKeyType = .next
         textField.borderStyle = .roundedRect
         textField.clearButtonMode = .whileEditing
@@ -250,11 +255,6 @@ extension FormView
         {
             textField.clearsOnInsertion = true
             textField.isSecureTextEntry = true
-        }
-        
-        if let value = value
-        {
-            textField.text = "\(value)"
         }
         
         textField.placeholder = "\(property.label)"
