@@ -15,6 +15,12 @@ extension FormView
         let label: String
         let isOptional: Bool
         
+        var isPassword: Bool
+        {
+            label.lowercased()
+                .contains("password")
+        }
+        
         enum Kind
         {
             case int, decimal

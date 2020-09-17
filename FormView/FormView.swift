@@ -246,8 +246,7 @@ extension FormView
         textField.borderStyle = .roundedRect
         textField.clearButtonMode = .whileEditing
         
-        if property.label.lowercased()
-            .contains("password") == true
+        if property.isPassword
         {
             textField.clearsOnInsertion = true
             textField.isSecureTextEntry = true
