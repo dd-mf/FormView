@@ -63,6 +63,7 @@ struct TestStruct
     var phone: String?
     var value: Decimal?
     var password: String?
+    var newPassword: String?
     var bestDroid: Droid = .R2D2
     var fooBarBaz: FooBarBaz = .foo
     var _fooBarBaz: FooBarBaz? = .foo
@@ -99,6 +100,7 @@ extension TestStruct: Assignable
         case value
         case phone
         case password
+        case newPassword
         case bestDroid
         case fooBarBaz
         case _fooBarBaz
@@ -119,6 +121,7 @@ extension TestStruct: Assignable
             case .value:        return \TestStruct.value
             case .phone:        return \TestStruct.phone
             case .password:     return \TestStruct.password
+            case .newPassword:  return \TestStruct.newPassword
             case .bestDroid:    return \TestStruct.bestDroid
             case .fooBarBaz:    return \TestStruct.fooBarBaz
             case ._fooBarBaz:   return \TestStruct._fooBarBaz

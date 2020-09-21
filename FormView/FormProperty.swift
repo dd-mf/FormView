@@ -7,6 +7,12 @@
 
 import UIKit
 
+fileprivate extension String
+{
+    static let new = "new"
+    static let password = "password"
+}
+
 extension FormView
 {
     internal struct Property
@@ -18,7 +24,7 @@ extension FormView
         var isPassword: Bool
         {
             label.lowercased()
-                .contains("password")
+                .contains(String.password)
         }
         
         enum Kind
@@ -106,7 +112,7 @@ extension FormView
             }
         }
         
-        var textContentType: UITextContentType?
+        var textContentType: UITextContentType
         {
             switch keyboardType
             {
@@ -115,8 +121,9 @@ extension FormView
             case .emailAddress: return .emailAddress
 
             default:
-                return isPassword ? .password :
-                    UITextContentType(rawValue: label)
+                return !isPassword ? UITextContentType(rawValue: label) :
+                    label.lowercased().components(separatedBy: String.password)
+                    .first?.contains(String.new) == true ? .newPassword : .password
             }
         }
     }
