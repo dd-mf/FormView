@@ -49,6 +49,12 @@ public class FormView: UIScrollView
         return stack
     }
     
+    public var spacing: CGFloat
+    {
+        get { stack.spacing }
+        set { stack.spacing = newValue }
+    }
+    
     public var values: [String: Any]?
     {
         guard let data = data else { return nil }
